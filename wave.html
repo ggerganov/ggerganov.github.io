@@ -4,18 +4,18 @@
         <meta charset="utf-8">
         <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                
+
         <title>Wave: data over sound in the browser</title>
         <style>
 
         body {
             font-size:12px;
-            font-family: monospace; 
+            font-family: monospace;
         }
 
         textarea {
             font-size:12px;
-            font-family: monospace; 
+            font-family: monospace;
         }
 
         div#outer {
@@ -54,7 +54,7 @@
         }
 
         .emscripten { padding-right: 0; margin-left: auto; margin-right: auto; display: block; }
-        div.emscripten { text-align: center; }      
+        div.emscripten { text-align: center; }
         div.emscripten_border { border: 1px solid black; }
 
         .spinner {
@@ -132,15 +132,15 @@
     <body>
         <div id="outer">
             <div id="header">
-                <h1>Wave</h1>
+                <h1>Data over Sound</h1>
                 Open this page in another browser on the same or nearby device.<br>
-                Select the same Tx. Protocol in both windows and make sure to allow microphone input on the receiving end.<br>
-                Try sending some data with the controls below.
+                Select the same Tx. Protocol and make sure to allow microphone input on the receiving end.<br>
+                Unplug your headphones and try sending some text with controls below.
             </div>
             <div id="main">
                 <div align=center>
                     <b>Tx. Protocol:</b>
-                    <select id="waveConfig" onClick="selectConfig(this.value);">
+                    <select id="waveConfig" onChange="selectConfig(this.value);">
                         <option value=0 selected>Mid freq, 43B/s</option>
                         <option value=1>Low freq, 16B/s</option>
                         <option value=2>Low-Mid freq, 57B/s</option>
@@ -201,9 +201,11 @@
                                 <tr>
                                     <td colspan=2>
                                         <div align="center">
-                                            <br>
-                                            <br>
-                                            <button style="width:60px;height:30px;" onClick="Module.cwrap('setText', 'string', ['string'])(document.getElementById('txData').value);">Send</button>
+                                            <br> <br>
+                                            <button style="width:200px;height:100px;" onClick="Module.cwrap('setText', 'string', ['string'])(document.getElementById('txData').value);">
+                                                SEND<br><br>(start with lowered speaker volume and keep rising until you
+                                                are hearing the sound good enough)
+                                            </button>
                                         </div>
                                     </td>
                                 </tr>
@@ -349,10 +351,6 @@ function getAverageRxTime() {
     document.getElementById('averageRxTime').innerHTML = Module.cwrap('getAverageRxTime_ms', 'number', [''])().toFixed(2);
 }
 
-function getChecksumMag() {
-    document.getElementById('checksumMag').innerHTML = Module.cwrap('getChecksumMag', 'number', [''])().toFixed(5);
-}
-
 function getRxData() {
     document.getElementById('rxData').innerHTML = Module.cwrap('getText', 'string', [''])();
 }
@@ -369,7 +367,6 @@ var Module = {
     doNotCaptureKeyboard: true,
     preRun: [ (function() {
         setInterval(getAverageRxTime, 100);
-        //setInterval(getChecksumMag, 100);
         setInterval(getRxData, 100);
         setInterval(getSampleRate, 1000);
         waveConfig.value=0;
