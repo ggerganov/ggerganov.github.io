@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="en-us">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+        <title>Load a local file in a C++ Emscripten program</title>
+        <style>
+
+        body {
+            font-size:12px;
+            font-family: monospace;
+        }
+
+        textarea {
+            font-size:12px;
+            font-family: monospace;
+        }
+
+        div#outer {
+            width: 1000px;
+            background-color:#FFFFFF;
+            margin-top: 20px;
+            margin-bottom: 20px;
+            margin-left: auto;
+            margin-right: auto;
+            padding: 0px;
+        }
+
+        div#header {
+            padding: 15px;
+            margin: 0px;
+            text-align: left;
+        }
+
+        div#nav {
+            width: 25%;
+            padding: 10px;
+            margin-top: 1px;
+            float: left;
+        }
+
+        div#main {
+            margin-left: 0%;
+            margin-top: 1px;
+            padding: 10px;
+        }
+
+        div#footer {
+            padding: 15px;
+            margin: 0px;
+            border-top: thin solid #000000;
+        }
+
+        #output {
+            width: 100%;
+            height: 200px;
+            margin: 0 auto;
+            margin-top: 10px;
+            border-left: 0px;
+            border-right: 0px;
+            padding-left: 0px;
+            padding-right: 0px;
+            display: block;
+            background-color: black;
+            color: white;
+            font-size:10px;
+            font-family: 'Lucida Console', Monaco, monospace;
+            outline: none;
+        }
+        </style>
+        <script>
+            function startRead()
+            {
+                var file = document.getElementById('file').files[0];
+                if(file)
+                {
+                    getAsText(file);
+                }
+            }
+
+            function getAsText(readFile)
+            {
+                var reader;
+                try
+                {
+                    reader = new FileReader();
+                }
+                catch(e)
+                {
+                    document.getElementById('text-output').innerHTML = 
+                        "Error: File API is not supported on your browser";
+                    return;
+                }
+
+                reader.readAsText(readFile, "UTF-8");
+                reader.onload = loaded;
+                reader.onerror = errorHandler;
+            }
+
+            function loaded(evt)
+            {
+                var fileString = evt.target.result;
+                Module.cwrap('setFile', '', ['number', 'string'])(fileString.length, fileString);
+            }
+
+            function errorHandler(evt)
+            {
+                if(evt.target.error.code == evt.target.error.NOT_READABLE_ERR)
+                {
+                    document.getElementById('text-output').innerHTML = "Error reading file..."
+                }
+            }
+		</script>
+    </head>
+
+    <body>
+        <div id="outer">
+            <div id="header">
+                <h1>Load a local file in C++ Emscripten program</h1>
+                Select a file from your local machine to be loaded in the C++ code running on this page:
+            </div>
+            <div id="main">
+                <input id="file" type="file" multiple onchange="startRead()">
+                <pre> <code id="text-output"> </code> </pre>
+            </div>
+            <div id="footer">
+                <p>Standard output:</p>
+                <textarea id="output" rows="8"></textarea>
+
+                <div class="emscripten">
+                    <progress value="0" max="100" id="progress" hidden=1></progress>
+                </div>
+
+                <a href="https://github.com/ggerganov/load-em">Github</a>
+            </div>
+
+        </div>
+
+        <script type='text/javascript'>
+            var Module = {
+                doNotCaptureKeyboard: true,
+                preRun: [ (function() {
+                }) ],
+                postRun: [],
+                print: (function() {
+                    var element = document.getElementById('output');
+                    if (element) element.value = ''; // clear browser cache
+                    return function(text) {
+                        if (arguments.length > 1) text = Array.prototype.slice.call(arguments).join(' ');
+                        console.log(text);
+                        if (element) {
+                            element.value += text + "\n";
+                            element.scrollTop = element.scrollHeight; // focus on bottom
+                        }
+                    };
+                })(),
+                printErr: function(text) {
+                    if (arguments.length > 1) text = Array.prototype.slice.call(arguments).join(' ');
+                    console.error(text);
+                },
+                totalDependencies: 0,
+            };
+        </script>
+        <script async type="text/javascript" src="load.js"></script>
+    </body>
+</html>
