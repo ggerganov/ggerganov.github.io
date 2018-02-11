@@ -1,0 +1,86 @@
+<div id="main-container">
+    <input id="file" type="file" multiple onchange="startRead()"><br>
+
+    <br><hr><br>
+
+    <p>Standard output:</p>
+    <textarea id="output" rows="8"></textarea>
+
+    <div class="emscripten">
+        <progress value="0" max="100" id="progress" hidden=1></progress>
+    </div>
+
+    <a href="https://github.com/ggerganov/load-em">Github</a>
+
+</div>
+
+<script type='text/javascript'>
+    function startRead()
+    {
+        var file = document.getElementById('file').files[0];
+        if(file)
+        {
+            getAsText(file);
+        }
+    }
+
+    function getAsText(readFile)
+    {
+        var reader;
+        try
+        {
+            reader = new FileReader();
+        }
+        catch(e)
+        {
+            document.getElementById('text-output').innerHTML = 
+                "Error: File API is not supported on your browser";
+            return;
+        }
+
+        reader.readAsText(readFile, "UTF-8");
+        reader.onload = loaded;
+        reader.onerror = errorHandler;
+    }
+
+    function loaded(evt)
+    {
+        var fileString = evt.target.result;
+        Module.cwrap('setFile', '', ['number', 'string'])(fileString.length, fileString);
+    }
+
+    function errorHandler(evt)
+    {
+        if(evt.target.error.code == evt.target.error.NOT_READABLE_ERR)
+        {
+            document.getElementById('text-output').innerHTML = "Error reading file..."
+        }
+    }
+
+    var Module = {
+        doNotCaptureKeyboard: true,
+        preRun: [ (function() {
+        }) ],
+        postRun: [],
+        print: (function() {
+            var element = document.getElementById('output');
+            if (element) element.value = ''; // clear browser cache
+            return function(text) {
+                if (arguments.length > 1) text = Array.prototype.slice.call(arguments).join(' ');
+                console.log(text);
+                if (element) {
+                    element.value += text + "\n";
+                    element.scrollTop = element.scrollHeight; // focus on bottom
+                }
+            };
+        })(),
+        printErr: function(text) {
+            if (arguments.length > 1) text = Array.prototype.slice.call(arguments).join(' ');
+            console.error(text);
+        },
+        totalDependencies: 0,
+    };
+</script>
+
+<base href="/scripts/">
+<script async type="text/javascript" src="load.js"></script>

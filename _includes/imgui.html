@@ -1,0 +1,54 @@
+<div id="main-container">
+    <div class="emscripten_border">
+        <canvas class="emscripten" id="canvas" oncontextmenu="event.preventDefault()"></canvas>
+    </div>
+
+    <br><hr><br>
+
+    <p>Standard output:</p>
+    <textarea id="output" rows="8"></textarea>
+
+    <div class="emscripten">
+        <progress value="0" max="100" id="progress" hidden=1></progress>
+    </div>
+
+    <a href="https://github.com/ggerganov/imgui-em">Github</a>
+</div>
+
+</div>
+
+<script type='text/javascript'>
+    var Module = {
+        doNotCaptureKeyboard: true,
+        preRun: [ (function() {
+        }) ],
+        postRun: [],
+        print: (function() {
+            var element = document.getElementById('output');
+            if (element) element.value = ''; // clear browser cache
+            return function(text) {
+                if (arguments.length > 1) text = Array.prototype.slice.call(arguments).join(' ');
+                console.log(text);
+                if (element) {
+                    element.value += text + "\n";
+                    element.scrollTop = element.scrollHeight; // focus on bottom
+                }
+            };
+        })(),
+        canvas: (function() {
+            var canvas = document.getElementById('canvas');
+
+            canvas.addEventListener("webglcontextlost", function(e) { alert('WebGL context lost. You will need to reload the page.'); e.preventDefault(); }, false);
+
+            return canvas;
+        })(),
+        printErr: function(text) {
+            if (arguments.length > 1) text = Array.prototype.slice.call(arguments).join(' ');
+            console.error(text);
+        },
+        totalDependencies: 0,
+    };
+</script>
+
+<base href="/scripts/">
+<script async type="text/javascript" src="imgui.js"></script>

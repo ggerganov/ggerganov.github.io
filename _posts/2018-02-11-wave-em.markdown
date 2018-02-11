@@ -1,0 +1,12 @@
+---
+layout: post
+title:  "Data over sound in the browser"
+date:   2018-02-11 10:07:17 +0200
+htmlarr:
+- wave.html
+categories: jekyll update
+---
+
+Open this page in another browser on the same or nearby device.
+Select the same Tx. Protocol and make sure to allow microphone input on the receiving end.
+Unplug your headphones and try sending some text with controls below.
