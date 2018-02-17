@@ -8,5 +8,3 @@ categories: jekyll update
 ---
 
 Emscripten port of [https://github.com/ocornut/imgui](https://github.com/ocornut/imgui)
-
-There are still some issues with reading keyboard input and right click blocking the mouse input.

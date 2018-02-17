@@ -22,7 +22,9 @@
         doNotCaptureKeyboard: true,
         preRun: [ (function() {
         }) ],
-        postRun: [],
+        postRun: [ (function() {
+            Module.cwrap('setArticleWidth', '', ['number'])(document.getElementById('main-container').offsetWidth);
+        }) ],
         print: (function() {
             var element = document.getElementById('output');
             if (element) element.value = ''; // clear browser cache
