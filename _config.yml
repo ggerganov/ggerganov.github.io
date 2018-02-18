@@ -1,5 +1,4 @@
 title: C++ and stuff
-email: ggerganov@gmail.com
 description: >- # this means to ignore newlines until "baseurl:"
   Short posts about simple tools I'm working on. Mostly C++ related
 baseurl: "" # the subpath of your site, e.g. /blog
