@@ -3,8 +3,12 @@
     <section>
         <table>
             <tr>
-                <td colspan=4>
+                <td colspan=2>
                     Available networks: <select id="available-networks" name="available-networks" disabled></select>
+                </td>
+                <td colspan=2>
+                    <input type="range" min="1" max="100" value="25" class="slider" id="paramVolume" onInput="updateScroll('Volume');">
+                                        / <label id="paramVolumeScroll"></label></td>
                 </td>
             </tr>
             <tr><td colspan=4></td></tr>
@@ -75,6 +79,19 @@
     var bufferRx = null;
     var brx = new Uint8Array(256);
     var availableNetworks = [];
+
+    function updateScroll(sName) {
+        val = document.getElementById('param'+sName).value;
+        document.getElementById('param'+sName+'Scroll').innerHTML = val;
+
+        Module.cwrap('setParameters','',['number','number','number','number','number','number','number'])(
+            0,
+            0,
+            0,
+            0,
+            0,
+            paramVolume.value);
+    }
 
     function getSampleRate() {
         if (typeof Module === 'undefined') return;
