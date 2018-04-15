@@ -6,7 +6,14 @@
                 <td colspan=2>
                     Available networks: <select id="available-networks" name="available-networks" disabled></select>
                 </td>
-                <td colspan=2>
+                <td colspan=1>
+                    <select id="waveConfig" onChange="selectConfig(this.value);">
+                        <option value=0 selected>Slow</option>
+                        <option value=1>Fast</option>
+                    </select>
+                    <label hidden id="paramFramesPerTx"></label>
+                </td>
+                <td colspan=1>
                     <input type="range" min="1" max="100" value="10" class="slider" id="paramVolume" onInput="updateScroll('Volume');">
                                         / <label id="paramVolumeScroll"></label></td>
                 </td>
@@ -80,6 +87,26 @@
     var brx = new Uint8Array(256);
     var availableNetworks = [];
 
+function selectConfig(configId) {
+    paramFramesPerTx.value = 18;
+
+    if (configId == 0) {
+        paramFramesPerTx.value = 18;
+    }
+
+    if (configId == 1) {
+        paramFramesPerTx.value = 8;
+    }
+
+    Module.cwrap('setParameters','',['number','number','number','number','number','number','number'])(
+        0,
+        0,
+        paramFramesPerTx.value,
+        0,
+        0,
+        paramVolume.value);
+}
+
     function updateScroll(sName) {
         val = document.getElementById('param'+sName).value;
         document.getElementById('param'+sName+'Scroll').innerHTML = val;
@@ -87,7 +114,7 @@
         Module.cwrap('setParameters','',['number','number','number','number','number','number','number'])(
             0,
             0,
-            0,
+            paramFramesPerTx.value,
             0,
             0,
             paramVolume.value);
@@ -106,6 +133,7 @@
         doNotCaptureKeyboard: true,
         pre: [],
         postRun: [ (function() {
+            selectConfig(0);
             updateScroll('Volume');
             bufferRx = Module._malloc(256);
             setInterval(updatePeerInfo, 100);
