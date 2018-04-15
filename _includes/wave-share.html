@@ -27,7 +27,7 @@
                     </form>
                 </td>
                 <td>
-                    <button onClick="senderInit();">Broadcast</button>
+                    <button onClick="lockoutSubmit(this); senderInit();">Broadcast</button>
                 </td>
                 <td>
                     <div class="progress">
@@ -87,25 +87,37 @@
     var brx = new Uint8Array(256);
     var availableNetworks = [];
 
-function selectConfig(configId) {
-    paramFramesPerTx.value = 18;
+    function lockoutSubmit(button) {
+        var oldValue = button.value;
 
-    if (configId == 0) {
+        button.setAttribute('disabled', true);
+        button.value = '...processing...';
+
+        setTimeout(function(){
+            button.value = oldValue;
+            button.removeAttribute('disabled');
+        }, 5000)
+    }
+
+    function selectConfig(configId) {
         paramFramesPerTx.value = 18;
-    }
 
-    if (configId == 1) {
-        paramFramesPerTx.value = 8;
-    }
+        if (configId == 0) {
+            paramFramesPerTx.value = 18;
+        }
 
-    Module.cwrap('setParameters','',['number','number','number','number','number','number','number'])(
-        0,
-        0,
-        paramFramesPerTx.value,
-        0,
-        0,
-        paramVolume.value);
-}
+        if (configId == 1) {
+            paramFramesPerTx.value = 8;
+        }
+
+        Module.cwrap('setParameters','',['number','number','number','number','number','number','number'])(
+            0,
+            0,
+            paramFramesPerTx.value,
+            0,
+            0,
+            paramVolume.value);
+    }
 
     function updateScroll(sName) {
         val = document.getElementById('param'+sName).value;

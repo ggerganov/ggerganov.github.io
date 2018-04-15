@@ -422,7 +422,7 @@ function checkRxForPeerData() {
 
         lastSenderRequestSDP = '{"type":"offer","sdp":'+JSON.stringify(writeSDP(res))+'}';
         peerInfo.innerHTML= "Receive file from " + vals[0] + " ?";
-        peerReceive.innerHTML= "<button onClick=\"receiverInit();\">Receive</button>";
+        peerReceive.innerHTML= "<button onClick=\"lockoutSubmit(this); receiverInit();\">Receive</button>";
 
         return;
     }
