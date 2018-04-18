@@ -8,8 +8,8 @@
                 </td>
                 <td colspan=1>
                     <select id="waveConfig" onChange="selectConfig(this.value);">
-                        <option value=0 selected>Slow</option>
-                        <option value=1>Slow 2</option>
+                        <option value=0 selected>Near/Quiet</option>
+                        <option value=1>Far/Noisy</option>
                         <option value=2>Fast</option>
                     </select>
                     <label hidden id="paramFreqDelta"></label>
@@ -103,9 +103,9 @@
     }
 
     function selectConfig(configId) {
-        paramFreqDelta.value = 6;
-        paramFramesPerTx.value = 6;
-        paramBytesPerTx.value = 2;
+        paramFreqDelta.value = 4;
+        paramFramesPerTx.value = 9;
+        paramBytesPerTx.value = 3;
 
         if (configId == 1) {
             paramFreqDelta.value = 2;
@@ -115,7 +115,7 @@
 
         if (configId == 2) {
             paramFreqDelta.value = 2;
-            paramFramesPerTx.value = 8;
+            paramFramesPerTx.value = 9;
             paramBytesPerTx.value = 6;
         }
 
