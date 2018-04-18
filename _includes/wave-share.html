@@ -9,9 +9,12 @@
                 <td colspan=1>
                     <select id="waveConfig" onChange="selectConfig(this.value);">
                         <option value=0 selected>Slow</option>
-                        <option value=1>Fast</option>
+                        <option value=1>Slow 2</option>
+                        <option value=2>Fast</option>
                     </select>
+                    <label hidden id="paramFreqDelta"></label>
                     <label hidden id="paramFramesPerTx"></label>
+                    <label hidden id="paramBytesPerTx"></label>
                 </td>
                 <td colspan=1>
                     <input type="range" min="1" max="100" value="10" class="slider" id="paramVolume" onInput="updateScroll('Volume');">
@@ -100,21 +103,27 @@
     }
 
     function selectConfig(configId) {
-        paramFramesPerTx.value = 18;
-
-        if (configId == 0) {
-            paramFramesPerTx.value = 18;
-        }
+        paramFreqDelta.value = 6;
+        paramFramesPerTx.value = 6;
+        paramBytesPerTx.value = 2;
 
         if (configId == 1) {
+            paramFreqDelta.value = 2;
+            paramFramesPerTx.value = 18;
+            paramBytesPerTx.value = 6;
+        }
+
+        if (configId == 2) {
+            paramFreqDelta.value = 2;
             paramFramesPerTx.value = 8;
+            paramBytesPerTx.value = 6;
         }
 
         Module.cwrap('setParameters','',['number','number','number','number','number','number','number'])(
-            0,
+            paramFreqDelta.value,
             0,
             paramFramesPerTx.value,
-            0,
+            paramBytesPerTx.value,
             0,
             paramVolume.value);
     }
@@ -124,10 +133,10 @@
         document.getElementById('param'+sName+'Scroll').innerHTML = val;
 
         Module.cwrap('setParameters','',['number','number','number','number','number','number','number'])(
-            0,
+            paramFreqDelta.value,
             0,
             paramFramesPerTx.value,
-            0,
+            paramBytesPerTx.value,
             0,
             paramVolume.value);
     }
@@ -145,7 +154,9 @@
         doNotCaptureKeyboard: true,
         pre: [],
         postRun: [ (function() {
-            selectConfig(0);
+            e = document.getElementById('waveConfig');
+            selectConfig(e.options[e.selectedIndex].value);
+
             updateScroll('Volume');
             bufferRx = Module._malloc(256);
             setInterval(updatePeerInfo, 100);
