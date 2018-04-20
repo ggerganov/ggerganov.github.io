@@ -11,8 +11,10 @@
                         <option value=0 selected>Near/Quiet</option>
                         <option value=1>Far/Noisy</option>
                         <option value=2>Fast</option>
+                        <option value=3>Ultrasonic</option>
                     </select>
                     <label hidden id="paramFreqDelta"></label>
+                    <label hidden id="paramFreqStart"></label>
                     <label hidden id="paramFramesPerTx"></label>
                     <label hidden id="paramBytesPerTx"></label>
                 </td>
@@ -104,24 +106,34 @@
 
     function selectConfig(configId) {
         paramFreqDelta.value = 4;
+        paramFreqStart.value = 40;
         paramFramesPerTx.value = 9;
         paramBytesPerTx.value = 3;
 
         if (configId == 1) {
             paramFreqDelta.value = 2;
+            paramFreqStart.value = 40;
             paramFramesPerTx.value = 18;
             paramBytesPerTx.value = 6;
         }
 
         if (configId == 2) {
             paramFreqDelta.value = 2;
+            paramFreqStart.value = 40;
             paramFramesPerTx.value = 9;
             paramBytesPerTx.value = 6;
         }
 
+        if (configId == 3) {
+            paramFreqDelta.value = 4;
+            paramFreqStart.value = 320;
+            paramFramesPerTx.value = 9;
+            paramBytesPerTx.value = 3;
+        }
+
         Module.cwrap('setParameters','',['number','number','number','number','number','number','number'])(
             paramFreqDelta.value,
-            0,
+            paramFreqStart.value,
             paramFramesPerTx.value,
             paramBytesPerTx.value,
             0,
@@ -134,7 +146,7 @@
 
         Module.cwrap('setParameters','',['number','number','number','number','number','number','number'])(
             paramFreqDelta.value,
-            0,
+            paramFreqStart.value,
             paramFramesPerTx.value,
             paramBytesPerTx.value,
             0,
