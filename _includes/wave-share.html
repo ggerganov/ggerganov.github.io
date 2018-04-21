@@ -1,6 +1,8 @@
 <div id="main-container">
 
     <section>
+        <div id="sound"></div>
+
         <table>
             <tr>
                 <td colspan=2>
@@ -166,6 +168,7 @@
         doNotCaptureKeyboard: true,
         pre: [],
         postRun: [ (function() {
+            playSound("/media/plucky");
             e = document.getElementById('waveConfig');
             selectConfig(e.options[e.selectedIndex].value);
 
@@ -234,6 +237,10 @@
             if (text) Module.printErr('[post-exception status] ' + text);
         };
     };
+
+    function playSound(filename){   
+        document.getElementById("sound").innerHTML='<audio autoplay="autoplay"><source src="' + filename + '.mp3" type="audio/mpeg" /><source src="' + filename + '.ogg" type="audio/ogg" /><embed hidden="true" autostart="true" loop="false" src="' + filename +'.mp3" /></audio>';
+    }
 
 </script>
 <base href="/scripts/wave-share/">

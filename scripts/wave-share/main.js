@@ -109,7 +109,10 @@ function getIPs(callback){
 
     function handleCandidate(candidate){
         //match just the IP address
+        //console.log(candidate);
         var ip_regex = /([0-9]{1,3}(\.[0-9]{1,3}){3}|[a-f0-9]{1,4}(:[a-f0-9]{1,4}){7})/
+        var regex_res = ip_regex.exec(candidate);
+        if (regex_res == null) return;
         var ip_addr = ip_regex.exec(candidate)[1];
 
         //remove duplicates
@@ -331,7 +334,9 @@ function senderInit() {
 function senderSend() {
     if (lastReceiverAnswerSDP == null) return;
     var answerDesc = new RTCSessionDescription(JSON.parse(lastReceiverAnswerSDP));
-    senderPC.setRemoteDescription(answerDesc);
+    if (senderPC) {
+        senderPC.setRemoteDescription(answerDesc);
+    }
 }
 
 //
@@ -340,17 +345,34 @@ function senderSend() {
 
 var receiverPC;
 var receiverDC;
+var firstTimeFail = false;
 
 function updatePeerInfo() {
     if (typeof Module === 'undefined') return;
     var framesLeftToRecord = Module.cwrap('getFramesLeftToRecord', 'number', [])();
     var framesToRecord = Module.cwrap('getFramesToRecord', 'number', [])();
+    var framesLeftToAnalyze = Module.cwrap('getFramesLeftToAnalyze', 'number', [])();
+    var framesToAnalyze = Module.cwrap('getFramesToAnalyze', 'number', [])();
 
-    if (framesLeftToRecord > 0) {
+    if (framesToAnalyze > 0) {
+        peerInfo.innerHTML=
+            "Analyzing Rx data: <progress value=" + (framesToAnalyze - framesLeftToAnalyze) +
+            " max=" + (framesToRecord) + "></progress>";
+        peerReceive.innerHTML= "";
+    } else if (framesLeftToRecord > Math.max(0, 0.05*framesToRecord)) {
+        firstTimeFail = true;
         peerInfo.innerHTML=
             "Sound handshake in progress: <progress value=" + (framesToRecord - framesLeftToRecord) +
             " max=" + (framesToRecord) + "></progress>";
         peerReceive.innerHTML= "";
+    } else if (framesToRecord > 0) {
+        peerInfo.innerHTML= "Analyzing Rx data ...";
+    } else if (framesToRecord == -1) {
+        if (firstTimeFail) {
+            playSound("/media/case-closed");
+            firstTimeFail = false;
+        }
+        peerInfo.innerHTML= "<p style=\"color:red\">Failed to decode Rx data</p>";
     }
 }
 
@@ -364,6 +386,7 @@ function checkRxForPeerData() {
     }
 
     if (String.fromCharCode(brx[0]) == "O") {
+        console.log("Received Offer");
         var lastSenderRequestTmp = brx;
         if (lastSenderRequestTmp == lastSenderRequest) return;
 
@@ -420,11 +443,15 @@ function checkRxForPeerData() {
             res.candidates[0].priority = kOfferCandidatePriority;
         }
 
+        //console.log(writeSDP(res));
         lastSenderRequestSDP = '{"type":"offer","sdp":'+JSON.stringify(writeSDP(res))+'}';
         peerInfo.innerHTML= "Receive file from " + vals[0] + " ?";
         peerReceive.innerHTML= "<button onClick=\"lockoutSubmit(this); receiverInit();\">Receive</button>";
+        playSound("/media/open-ended");
 
         return;
+    } else {
+        lastSenderRequest = null;
     }
 
     if (String.fromCharCode(brx[0]) == "A") {
@@ -485,9 +512,12 @@ function checkRxForPeerData() {
         }
 
         lastReceiverAnswerSDP = '{"type":"answer","sdp":'+JSON.stringify(writeSDP(res))+'}';
+        playSound("/media/open-ended");
         senderSend();
 
         return;
+    } else {
+        lastReceiverAnswer = null;
     }
 }
 
@@ -559,6 +589,10 @@ function handleFileInputChange() {
 
 function sendData() {
     var file = fileInput.files[0];
+    if (file == null) {
+        peerInfo.innerHTML = "Connection established, but no file selected"
+        return;
+    }
     console.log('File is ' + [file.name, file.size, file.type,
         file.lastModifiedDate
     ].join(' '));
@@ -633,6 +667,8 @@ function receiveChannelCallback(event) {
     receiverDC.onclose = onReceiveChannelStateChange;
 
     receivedSize = 0;
+    recvFileName = '';
+    recvFileSize = 0;
     bitrateMax = 0;
     downloadAnchor.textContent = '';
     downloadAnchor.removeAttribute('download');
