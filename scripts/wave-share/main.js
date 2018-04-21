@@ -386,10 +386,10 @@ function checkRxForPeerData() {
     }
 
     if (String.fromCharCode(brx[0]) == "O") {
-        console.log("Received Offer");
         var lastSenderRequestTmp = brx;
         if (lastSenderRequestTmp == lastSenderRequest) return;
 
+        console.log("Received Offer");
         lastSenderRequest = lastSenderRequestTmp;
 
         var vals = Array();
