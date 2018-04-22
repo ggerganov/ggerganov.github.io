@@ -320,6 +320,7 @@ function createOfferSDP() {
         res.origin.sessionVersion   = kOfferSessionVersion;
         res.groups[0].mids          = kOfferBundle;
         res.media[0].mid            = kOfferBundle;
+        res.media[0].connection.ip  = document.getElementById('available-networks').value;
 
         e.sdp = writeSDP(res);
         senderPC.setLocalDescription(e);
