@@ -1,3 +1,4 @@
+var kOfferNumCandidates         = 5;
 var kOfferName                  = '-';
 var kOfferUsername              = '-';
 var kOfferSessionId             = '1337';
@@ -12,6 +13,7 @@ var kOfferUfrag                 = 'bc105aa9';
 var kOfferPwd                   = '52f0a329e7fd93662f50828f617b408d';
 var kOfferFingerprint           = '00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00';
 
+var kAnswerNumCandidates        = 5;
 var kAnswerName                 = '-';
 var kAnswerUsername             = '-';
 var kAnswerSessionId            = '1338';
@@ -38,7 +40,11 @@ function getOfferTemplate() {
         "a=msid-semantic:WMS *\r\n" +
         "m=application "+kOfferPort+" DTLS/SCTP 5000\r\n" +
         "c=IN IP4 "+kOfferLocalhost+"\r\n" +
-        "a=candidate:"+kOfferCandidateFoundation+" "+kOfferCandidateComponent+" UDP "+kOfferCandidatePriority+" "+kOfferLocalhost+" "+kOfferPort+" typ host\r\n" +
+        "a=candidate:0 "+kOfferCandidateComponent+" UDP "+kOfferCandidatePriority+" "+kOfferLocalhost+" "+kOfferPort+" typ host\r\n" +
+        "a=candidate:1 "+kOfferCandidateComponent+" UDP "+kOfferCandidatePriority+" "+kOfferLocalhost+" "+kOfferPort+" typ host\r\n" +
+        "a=candidate:2 "+kOfferCandidateComponent+" UDP "+kOfferCandidatePriority+" "+kOfferLocalhost+" "+kOfferPort+" typ host\r\n" +
+        "a=candidate:3 "+kOfferCandidateComponent+" UDP "+kOfferCandidatePriority+" "+kOfferLocalhost+" "+kOfferPort+" typ host\r\n" +
+        "a=candidate:4 "+kOfferCandidateComponent+" UDP "+kOfferCandidatePriority+" "+kOfferLocalhost+" "+kOfferPort+" typ host\r\n" +
         "a=sendrecv\r\n" +
         "a=end-of-candidates\r\n" +
         "a=ice-pwd:"+kOfferPwd+"\r\n" +
@@ -61,7 +67,11 @@ function getAnswerTemplate() {
         "a=msid-semantic:WMS *\r\n" +
         "m=application "+kAnswerPort+" DTLS/SCTP 5000\r\n" +
         "c=IN IP4 "+kAnswerLocalhost+"\r\n" +
-        "a=candidate:"+kAnswerCandidateFoundation+" "+kAnswerCandidateComponent+" UDP "+kAnswerCandidatePriority+" "+kAnswerLocalhost+" "+kAnswerPort+" typ host\r\n" +
+        "a=candidate:0 "+kAnswerCandidateComponent+" UDP "+kAnswerCandidatePriority+" "+kAnswerLocalhost+" "+kAnswerPort+" typ host\r\n" +
+        "a=candidate:1 "+kAnswerCandidateComponent+" UDP "+kAnswerCandidatePriority+" "+kAnswerLocalhost+" "+kAnswerPort+" typ host\r\n" +
+        "a=candidate:2 "+kAnswerCandidateComponent+" UDP "+kAnswerCandidatePriority+" "+kAnswerLocalhost+" "+kAnswerPort+" typ host\r\n" +
+        "a=candidate:3 "+kAnswerCandidateComponent+" UDP "+kAnswerCandidatePriority+" "+kAnswerLocalhost+" "+kAnswerPort+" typ host\r\n" +
+        "a=candidate:4 "+kAnswerCandidateComponent+" UDP "+kAnswerCandidatePriority+" "+kAnswerLocalhost+" "+kAnswerPort+" typ host\r\n" +
         "a=sendrecv\r\n" +
         "a=end-of-candidates\r\n" +
         "a=ice-pwd:"+kAnswerPwd+"\r\n" +
@@ -434,13 +444,17 @@ function checkRxForPeerData() {
             res.fingerprint.hash   = vals[2];
         }
         if (typeof res.candidates === 'undefined') {
-            res.media[0].candidates[0].ip       = vals[0];
-            res.media[0].candidates[0].port     = vals[1];
-            res.media[0].candidates[0].priority = kOfferCandidatePriority;
+            for (var i = 0; i < kOfferNumCandidates; ++i) {
+                res.media[0].candidates[i].ip       = vals[0];
+                res.media[0].candidates[i].port     = vals[1];
+                res.media[0].candidates[i].priority = kOfferCandidatePriority;
+            }
         } else {
-            res.candidates[0].ip       = vals[0];
-            res.candidates[0].port     = vals[1];
-            res.candidates[0].priority = kOfferCandidatePriority;
+            for (var i = 0; i < kOfferNumCandidates; ++i) {
+                res.candidates[i].ip       = vals[0];
+                res.candidates[i].port     = vals[1];
+                res.candidates[i].priority = kOfferCandidatePriority;
+            }
         }
 
         //console.log(writeSDP(res));
@@ -458,6 +472,7 @@ function checkRxForPeerData() {
         var lastReceiverAnswerTmp = brx;
         if (lastReceiverAnswerTmp == lastReceiverAnswer) return;
 
+        console.log("Received Answer");
         lastReceiverAnswer = lastReceiverAnswerTmp;
 
         var vals = Array();
@@ -502,13 +517,17 @@ function checkRxForPeerData() {
             res.fingerprint.hash   = vals[2];
         }
         if (typeof res.candidates === 'undefined') {
-            res.media[0].candidates[0].ip       = vals[0];
-            res.media[0].candidates[0].port     = vals[1];
-            res.media[0].candidates[0].priority = kAnswerCandidatePriority;
+            for (var i = 0; i < kAnswerNumCandidates; ++i) {
+                res.media[0].candidates[i].ip       = vals[0];
+                res.media[0].candidates[i].port     = vals[1];
+                res.media[0].candidates[i].priority = kAnswerCandidatePriority;
+            }
         } else {
-            res.candidates[0].ip       = vals[0];
-            res.candidates[0].port     = vals[1];
-            res.candidates[0].priority = kAnswerCandidatePriority;
+            for (var i = 0; i < kAnswerNumCandidates; ++i) {
+                res.candidates[i].ip       = vals[0];
+                res.candidates[i].port     = vals[1];
+                res.candidates[i].priority = kAnswerCandidatePriority;
+            }
         }
 
         lastReceiverAnswerSDP = '{"type":"answer","sdp":'+JSON.stringify(writeSDP(res))+'}';
