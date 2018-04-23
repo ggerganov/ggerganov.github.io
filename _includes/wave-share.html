@@ -10,10 +10,14 @@
                 </td>
                 <td colspan=1>
                     <select id="waveConfig" onChange="selectConfig(this.value);">
-                        <option value=0 selected>Near/Quiet</option>
-                        <option value=1>Far/Noisy</option>
-                        <option value=2>Fast</option>
+                        <option value=0 selected>Default</option>
+                        <option value=1>Fast</option>
+                        <option value=2>Fastest</option>
                         <option value=3>Ultrasonic</option>
+                        <option value=4>OLD Near/Quiet</option>
+                        <option value=5>OLD Far/Noisy</option>
+                        <option value=6>OLD Fast</option>
+                        <option value=7>OLD Ultrasonic</option>
                     </select>
                     <label hidden id="paramFreqDelta"></label>
                     <label hidden id="paramFreqStart"></label>
@@ -43,7 +47,6 @@
                     </div>
                 </td>
             </tr>
-            <tr><td colspan=4></td></tr>
             <tr><td colspan=4></td></tr>
             <tr>
                 <td colspan=2>
@@ -107,26 +110,54 @@
     }
 
     function selectConfig(configId) {
-        paramFreqDelta.value = 4;
+        paramFreqDelta.value = 1;
         paramFreqStart.value = 40;
         paramFramesPerTx.value = 9;
         paramBytesPerTx.value = 3;
 
         if (configId == 1) {
+            paramFreqDelta.value = 1;
+            paramFreqStart.value = 40;
+            paramFramesPerTx.value = 6;
+            paramBytesPerTx.value = 3;
+        }
+
+        if (configId == 2) {
+            paramFreqDelta.value = 1;
+            paramFreqStart.value = 40;
+            paramFramesPerTx.value = 3;
+            paramBytesPerTx.value = 3;
+        }
+
+        if (configId == 3) {
+            paramFreqDelta.value = 1;
+            paramFreqStart.value = 320;
+            paramFramesPerTx.value = 9;
+            paramBytesPerTx.value = 3;
+        }
+
+        if (configId == 4) {
+            paramFreqDelta.value = 4;
+            paramFreqStart.value = 40;
+            paramFramesPerTx.value = 9;
+            paramBytesPerTx.value = 3;
+        }
+
+        if (configId == 5) {
             paramFreqDelta.value = 2;
             paramFreqStart.value = 40;
             paramFramesPerTx.value = 18;
             paramBytesPerTx.value = 6;
         }
 
-        if (configId == 2) {
+        if (configId == 6) {
             paramFreqDelta.value = 2;
             paramFreqStart.value = 40;
             paramFramesPerTx.value = 9;
             paramBytesPerTx.value = 6;
         }
 
-        if (configId == 3) {
+        if (configId == 7) {
             paramFreqDelta.value = 4;
             paramFreqStart.value = 320;
             paramFramesPerTx.value = 9;
