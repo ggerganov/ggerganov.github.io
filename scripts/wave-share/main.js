@@ -634,11 +634,15 @@ function sendData() {
         var reader = new window.FileReader();
         reader.onload = (function() {
             return function(e) {
-                senderDC.send(e.target.result);
-                if (file.size > offset + e.target.result.byteLength) {
-                    window.setTimeout(sliceFile, 0, offset + chunkSize);
+                if (senderDC.bufferedAmount > 4*1024*1024) {
+                    window.setTimeout(sliceFile, 100, offset);
+                } else {
+                    senderDC.send(e.target.result);
+                    if (file.size > offset + e.target.result.byteLength) {
+                        window.setTimeout(sliceFile, 0, offset + chunkSize);
+                    }
+                    sendProgress.value = offset + e.target.result.byteLength;
                 }
-                sendProgress.value = offset + e.target.result.byteLength;
             };
         })(file);
         var slice = file.slice(offset, offset + chunkSize);
@@ -701,13 +705,15 @@ var recvFileName = '';
 var recvFileSize = 0;
 
 function onReceiveMessageCallback(event) {
-    console.log('Received Message ' + event.data.byteLength);
+    //console.log('Received Message ' + event.data.byteLength);
     if (recvFileName == '') {
         recvFileName = ab2str(event.data);
         return;
     }
     if (recvFileSize == 0) {
         recvFileSize = parseInt(ab2str(event.data));
+        peerInfo.innerHTML = "Receiving file '" + recvFileName + "' (" + recvFileSize + " bytes) ...";
+        receiveProgress.max = recvFileSize;
         return;
     }
 
@@ -725,14 +731,11 @@ function onReceiveMessageCallback(event) {
 
         downloadAnchor.href = URL.createObjectURL(received);
         downloadAnchor.download = recvFileName;
-        downloadAnchor.textContent =
-            'Click to download \'' + recvFileName + '\' (' + recvFileSize + ' bytes)';
+        downloadAnchor.textContent = 'Click to download \'' + recvFileName + '\' (' + recvFileSize + ' bytes)';
         downloadAnchor.style.display = 'block';
 
-        var bitrate = Math.round(receivedSize * 8 /
-            ((new Date()).getTime() - timestampStart));
-        bitrateDiv.innerHTML = 'Average Bitrate: ' +
-            bitrate + ' kbits/sec (max: ' + bitrateMax + ' kbits/sec)';
+        var bitrate = Math.round(8*receivedSize/((new Date()).getTime() - timestampStart));
+        bitrateDiv.innerHTML = 'Average Bitrate: ' + bitrate + ' kbits/sec (max: ' + bitrateMax + ' kbits/sec)';
 
         if (statsInterval) {
             window.clearInterval(statsInterval);
@@ -757,53 +760,24 @@ function onReceiveChannelStateChange() {
 
 // display bitrate statistics.
 function displayStats() {
-    return;
-
     var display = function(bitrate) {
         bitrateDiv.innerHTML = '<strong>Current Bitrate:</strong> ' +
             bitrate + ' kbits/sec';
     };
 
     if (receiverPC && receiverPC.iceConnectionState === 'connected') {
-        if (adapter.browserDetails.browser === 'chrome') {
-            // TODO: once https://code.google.com/p/webrtc/issues/detail?id=4321
-            // lands those stats should be preferrred over the connection stats.
-            receiverPC.getStats(null, function(stats) {
-                for (var key in stats) {
-                    var res = stats[key];
-                    if (timestampPrev === res.timestamp) {
-                        return;
-                    }
-                    if (res.type === 'googCandidatePair' &&
-                        res.googActiveConnection === 'true') {
-                        // calculate current bitrate
-                        var bytesNow = res.bytesReceived;
-                        var bitrate = Math.round((bytesNow - bytesPrev) * 8 /
-                            (res.timestamp - timestampPrev));
-                        display(bitrate);
-                        timestampPrev = res.timestamp;
-                        bytesPrev = bytesNow;
-                        if (bitrate > bitrateMax) {
-                            bitrateMax = bitrate;
-                        }
-                    }
-                }
-            });
-        } else {
-            // Firefox currently does not have data channel stats. See
-            // https://bugzilla.mozilla.org/show_bug.cgi?id=1136832
-            // Instead, the bitrate is calculated based on the number of
-            // bytes received.
-            var bytesNow = receivedSize;
-            var now = (new Date()).getTime();
-            var bitrate = Math.round((bytesNow - bytesPrev) * 8 /
-                (now - timestampPrev));
-            display(bitrate);
-            timestampPrev = now;
-            bytesPrev = bytesNow;
-            if (bitrate > bitrateMax) {
-                bitrateMax = bitrate;
-            }
+        // Firefox currently does not have data channel stats. See
+        // https://bugzilla.mozilla.org/show_bug.cgi?id=1136832
+        // Instead, the bitrate is calculated based on the number of
+        // bytes received.
+        var bytesNow = receivedSize;
+        var now = (new Date()).getTime();
+        var bitrate = Math.round(8*(bytesNow - bytesPrev)/(now - timestampPrev));
+        display(bitrate);
+        timestampPrev = now;
+        bytesPrev = bytesNow;
+        if (bitrate > bitrateMax) {
+            bitrateMax = bitrate;
         }
     }
 }
