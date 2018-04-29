@@ -7,5 +7,5 @@ htmlarr:
 categories: jekyll update
 ---
 
-Peer-to-peer file sharing using WebRTC. Handshaking is performed through sound - using
-the devices speakers and microphone. No server-side required.
+Peer-to-peer file sharing using WebRTC. Signaling is performed through sound.
+No server-side is required. Make sure to allow microphone capture on this page.

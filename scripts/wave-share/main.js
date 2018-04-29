@@ -610,12 +610,11 @@ function handleFileInputChange() {
 function sendData() {
     var file = fileInput.files[0];
     if (file == null) {
-        peerInfo.innerHTML = "Connection established, but no file selected"
+        peerInfo.innerHTML = "Connection established, but no file selected";
         return;
     }
-    console.log('File is ' + [file.name, file.size, file.type,
-        file.lastModifiedDate
-    ].join(' '));
+    peerInfo.innerHTML = "Sending selected file to peer ...";
+    console.log('File is ' + [file.name, file.size, file.type, file.lastModifiedDate ].join(' '));
 
     // Handle 0 size files.
     statusMessage.textContent = '';
