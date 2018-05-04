@@ -6,6 +6,11 @@
         <table>
             <tr>
                 <td colspan=4 align="center">
+                    <button onClick="doInit()">Init</button>
+                </td>
+            </tr>
+            <tr>
+                <td colspan=4 align="center">
 					<div class="led-box">
                         <p>Output:</p>
 					</div>
@@ -36,6 +41,8 @@
 					</div>
                 </td>
             </tr>
+        </table>
+        <table id="main-controls" hidden>
             <tr>
                 <td colspan=2>
                     Local address: <select id="available-networks" name="available-networks"></select>
@@ -293,26 +300,7 @@
     var Module = {
         doNotCaptureKeyboard: true,
         pre: [],
-        postRun: [ (function() {
-            playSound("/media/plucky");
-            e = document.getElementById('waveConfig');
-            selectConfig(e.options[e.selectedIndex].value);
-
-            updateScroll('Volume');
-            bufferRx = Module._malloc(256);
-            setInterval(updatePeerInfo, 100);
-            setInterval(checkRxForPeerData, 1000);
-            setInterval(checkStatus, 1000);
-            getIPs(function(ip){
-                availableNetworks.push(ip);
-                var sel = document.getElementById('available-networks');
-                var opt = document.createElement("option");
-                opt.value = ip;
-                opt.text = ip;
-
-                sel.appendChild(opt);
-            });
-        }) ],
+        postRun: [ (function() { }) ],
         print: (function() {
             var element = document.getElementById('output');
             if (element) element.alue = ''; // clear browser cache
@@ -356,7 +344,33 @@
         }
     };
 
-    Module.setStatus('Downloading...');
+    function doInit() {
+        playSound("/media/plucky");
+        Module.cwrap('doInit', 'number', [''])();
+
+        e = document.getElementById('waveConfig');
+        selectConfig(e.options[e.selectedIndex].value);
+
+        updateScroll('Volume');
+        bufferRx = Module._malloc(256);
+        setInterval(updatePeerInfo, 100);
+        setInterval(checkRxForPeerData, 1000);
+        setInterval(checkStatus, 1000);
+        getIPs(function(ip){
+            availableNetworks.push(ip);
+            var sel = document.getElementById('available-networks');
+            var opt = document.createElement("option");
+            opt.value = ip;
+            opt.text = ip;
+
+            sel.appendChild(opt);
+        });
+
+       var x = document.getElementById("main-controls");
+       x.style.display = "block";
+    }
+
+    Module.setStatus('Initializing...');
     window.onerror = function(event) {
         Module.setStatus('Exception thrown, see JavaScript console');
         spinnerElement.style.display = 'none';
