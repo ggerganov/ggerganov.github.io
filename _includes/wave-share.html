@@ -230,6 +230,9 @@
         var sampleRate = Module.cwrap('getSampleRate', 'number', [''])();
     }
 
+    var isInitialized = false;
+    var isAudioContextUnlocked = false;
+
     var htmlGreenLED  = "<div class=\"led-green\"></div>";
     var htmlRedLED    = "<div class=\"led-red\"></div>";
     var htmlYellowLED = "<div class=\"led-yellow\"></div>";
@@ -238,7 +241,7 @@
 		var hasDeviceOutput = Module.cwrap('hasDeviceOutput', 'number', [''])();
         {
             var el = document.getElementById('has-device-output');
-            if (hasDeviceOutput != 0) {
+            if (hasDeviceOutput != 0 && isAudioContextUnlocked) {
                 if (el.innerHTML != htmlGreenLED) {
                     el.innerHTML = htmlGreenLED;
                 }
@@ -345,29 +348,43 @@
     };
 
     function doInit() {
+        if (isInitialized == false) {
+            Module.cwrap('doInit', 'number', [''])();
+
+            e = document.getElementById('waveConfig');
+            selectConfig(e.options[e.selectedIndex].value);
+
+            updateScroll('Volume');
+            bufferRx = Module._malloc(256);
+            setInterval(updatePeerInfo, 100);
+            setInterval(checkRxForPeerData, 1000);
+            setInterval(checkStatus, 1000);
+            getIPs(function(ip){
+                availableNetworks.push(ip);
+                var sel = document.getElementById('available-networks');
+                var opt = document.createElement("option");
+                opt.value = ip;
+                opt.text = ip;
+
+                sel.appendChild(opt);
+            });
+            isInitialized = true;
+
+            if (SDL2.audioContext) {
+                var buffer = SDL2.audioContext.createBuffer(1, 1, 22050);
+                var source = SDL2.audioContext.createBufferSource();
+                source.buffer = buffer;
+                source.connect(SDL2.audioContext.destination);
+                source.start();
+                if (source.playbackState != 0) {
+                    isAudioContextUnlocked = true;
+                }
+            }
+        }
+
         playSound("/media/plucky");
-        Module.cwrap('doInit', 'number', [''])();
-
-        e = document.getElementById('waveConfig');
-        selectConfig(e.options[e.selectedIndex].value);
-
-        updateScroll('Volume');
-        bufferRx = Module._malloc(256);
-        setInterval(updatePeerInfo, 100);
-        setInterval(checkRxForPeerData, 1000);
-        setInterval(checkStatus, 1000);
-        getIPs(function(ip){
-            availableNetworks.push(ip);
-            var sel = document.getElementById('available-networks');
-            var opt = document.createElement("option");
-            opt.value = ip;
-            opt.text = ip;
-
-            sel.appendChild(opt);
-        });
-
-       var x = document.getElementById("main-controls");
-       x.style.display = "block";
+        var x = document.getElementById("main-controls");
+        x.style.display = "block";
     }
 
     Module.setStatus('Initializing...');
