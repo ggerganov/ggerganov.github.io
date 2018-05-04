@@ -5,6 +5,38 @@
 
         <table>
             <tr>
+                <td colspan=4 align="center">
+					<div class="led-box">
+                        <p>Output:</p>
+					</div>
+					<div class="led-box">
+                        <p>Capture:</p>
+					</div>
+					<div class="led-box">
+                        <p>Browser:</p>
+					</div>
+					<div class="led-box">
+                        <p>WebRTC:</p>
+					</div>
+                </td>
+            </tr>
+            <tr>
+                <td colspan=4 align="center">
+					<div class="led-box" id="has-device-output" title="Indicates if an audio output device is available">
+						<div class="led-yellow"></div>
+					</div>
+					<div class="led-box" id="has-device-capture" title="Indicates if an audio capture is available. Make sure this page has access to the microphone">
+						<div class="led-yellow"></div>
+					</div>
+                    <div class="led-box" id="is-browser-supported" title="Indicates if the browser is supported">
+						<div class="led-yellow"></div>
+					</div>
+                    <div class="led-box" id="is-webrtc-supported" title="Indicates if WebRTC is supported">
+						<div class="led-yellow"></div>
+					</div>
+                </td>
+            </tr>
+            <tr>
                 <td colspan=2>
                     Local address: <select id="available-networks" name="available-networks"></select>
                 </td>
@@ -191,6 +223,69 @@
         var sampleRate = Module.cwrap('getSampleRate', 'number', [''])();
     }
 
+    var htmlGreenLED  = "<div class=\"led-green\"></div>";
+    var htmlRedLED    = "<div class=\"led-red\"></div>";
+    var htmlYellowLED = "<div class=\"led-yellow\"></div>";
+
+	function checkStatus() {
+		var hasDeviceOutput = Module.cwrap('hasDeviceOutput', 'number', [''])();
+        {
+            var el = document.getElementById('has-device-output');
+            if (hasDeviceOutput != 0) {
+                if (el.innerHTML != htmlGreenLED) {
+                    el.innerHTML = htmlGreenLED;
+                }
+            } else {
+                if (el.innerHTML != htmlRedLED) {
+                    el.innerHTML = htmlRedLED;
+                }
+            }
+        }
+
+		var hasDeviceCapture = Module.cwrap('hasDeviceCapture', 'number', [''])();
+        {
+            var el = document.getElementById('has-device-capture');
+            if (hasDeviceCapture != 0) {
+                if (el.innerHTML != htmlGreenLED) {
+                    el.innerHTML = htmlGreenLED;
+                }
+            } else {
+                if (el.innerHTML != htmlRedLED) {
+                    el.innerHTML = htmlRedLED;
+                }
+            }
+        }
+
+        var iOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+        var isBrowserSupported = !iOS;
+        {
+            var el = document.getElementById('is-browser-supported');
+            if (isBrowserSupported) {
+                if (el.innerHTML != htmlGreenLED) {
+                    el.innerHTML = htmlGreenLED;
+                }
+            } else {
+                if (el.innerHTML != htmlRedLED) {
+                    el.innerHTML = htmlRedLED;
+                }
+            }
+        }
+
+		var isWebRTCSupported = availableNetworks.length;
+        {
+            var el = document.getElementById('is-webrtc-supported');
+            if (isWebRTCSupported) {
+                if (el.innerHTML != htmlGreenLED) {
+                    el.innerHTML = htmlGreenLED;
+                }
+            } else {
+                if (el.innerHTML != htmlYellowLED) {
+                    el.innerHTML = htmlYellowLED;
+                }
+            }
+        }
+	}
+
     var statusElement = document.getElementById('statusEm');
     var progressElement = document.getElementById('progressEm');
     var spinnerElement = document.getElementById('spinnerEm');
@@ -207,6 +302,7 @@
             bufferRx = Module._malloc(256);
             setInterval(updatePeerInfo, 100);
             setInterval(checkRxForPeerData, 1000);
+            setInterval(checkStatus, 1000);
             getIPs(function(ip){
                 availableNetworks.push(ip);
                 var sel = document.getElementById('available-networks');

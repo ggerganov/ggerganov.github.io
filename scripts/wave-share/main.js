@@ -1,3 +1,8 @@
+/*! \file main.js
+ *  \brief File transfer with WebRTC. Signaling is done through sound
+ *  \author Georgi Gerganov
+ */
+
 var kOfferNumCandidates         = 5;
 var kOfferName                  = '-';
 var kOfferUsername              = '-';
