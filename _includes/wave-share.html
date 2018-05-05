@@ -73,8 +73,8 @@
             <tr><td colspan=4></td></tr>
             <tr>
                 <td colspan=2>
-                    Select file:
                     <form id="fileInfo">
+                        Select file:
                         <input type="file" id="fileInput" name="files"/>
                     </form>
                 </td>
@@ -232,7 +232,7 @@
         var sampleRate = Module.cwrap('getSampleRate', 'number', [''])();
     }
 
-    var isiOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+    var isiOS = /iPad|iPhone|iPod|CriOS/.test(navigator.userAgent) && !window.MSStream;
     var isInitialized = false;
     var isAudioContextUnlocked = !isiOS;
 
@@ -277,8 +277,8 @@
                     el.innerHTML = htmlGreenLED;
                 }
             } else {
-                if (el.innerHTML != htmlRedLED) {
-                    el.innerHTML = htmlRedLED;
+                if (el.innerHTML != htmlYellowLED) {
+                    el.innerHTML = htmlYellowLED;
                 }
             }
         }
@@ -407,7 +407,7 @@
         }
     }, false);
 
-    function playSound(filename){   
+    function playSound(filename){
        document.getElementById("sound").innerHTML='<audio id="soundInner"><source src="' + filename + '.mp3" type="audio/mpeg" /><embed hidden="true" autostart="true" loop="false" src="' + filename +'.mp3" /></audio>';
        document.getElementById("soundInner").volume = paramVolume.value/100.0;
        document.getElementById("soundInner").play();
