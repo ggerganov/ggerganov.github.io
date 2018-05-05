@@ -6,7 +6,7 @@
         <table>
             <tr>
                 <td colspan=4 align="center">
-                    <button onClick="doInit()">Init</button>
+                    <button onClick="doInit()" id="butInit" disabled>Init</button>
                 </td>
             </tr>
             <tr>
@@ -30,7 +30,7 @@
 					<div class="led-box" id="has-device-output" title="Indicates if an audio output device is available">
 						<div class="led-yellow"></div>
 					</div>
-					<div class="led-box" id="has-device-capture" title="Indicates if an audio capture is available. Make sure this page has access to the microphone">
+					<div class="led-box" id="has-device-capture" title="Indicates if an audio capture device is available. Make sure this page has access to the microphone">
 						<div class="led-yellow"></div>
 					</div>
                     <div class="led-box" id="is-browser-supported" title="Indicates if the browser is supported">
@@ -230,8 +230,9 @@
         var sampleRate = Module.cwrap('getSampleRate', 'number', [''])();
     }
 
+    var isiOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
     var isInitialized = false;
-    var isAudioContextUnlocked = false;
+    var isAudioContextUnlocked = !isiOS;
 
     var htmlGreenLED  = "<div class=\"led-green\"></div>";
     var htmlRedLED    = "<div class=\"led-red\"></div>";
@@ -266,8 +267,7 @@
             }
         }
 
-        var iOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-        var isBrowserSupported = !iOS;
+        var isBrowserSupported = !isiOS;
         {
             var el = document.getElementById('is-browser-supported');
             if (isBrowserSupported) {
@@ -303,7 +303,7 @@
     var Module = {
         doNotCaptureKeyboard: true,
         pre: [],
-        postRun: [ (function() { }) ],
+        postRun: [ (function() { document.getElementById("butInit").disabled = false; }) ],
         print: (function() {
             var element = document.getElementById('output');
             if (element) element.alue = ''; // clear browser cache
@@ -369,17 +369,6 @@
                 sel.appendChild(opt);
             });
             isInitialized = true;
-
-            if (SDL2.audioContext) {
-                var buffer = SDL2.audioContext.createBuffer(1, 1, 22050);
-                var source = SDL2.audioContext.createBufferSource();
-                source.buffer = buffer;
-                source.connect(SDL2.audioContext.destination);
-                source.start();
-                if (source.playbackState != 0) {
-                    isAudioContextUnlocked = true;
-                }
-            }
         }
 
         playSound("/media/plucky");
@@ -395,6 +384,25 @@
             if (text) Module.printErr('[post-exception status] ' + text);
         };
     };
+
+    window.addEventListener('touchstart', function() {
+        if (isAudioContextUnlocked == false && SDL2.audioContext) {
+            var buffer = SDL2.audioContext.createBuffer(1, 1, 22050);
+            var source = SDL2.audioContext.createBufferSource();
+            source.buffer = buffer;
+            source.connect(SDL2.audioContext.destination);
+            source.start();
+
+            setTimeout(function() {
+                if((source.playbackState === source.PLAYING_STATE || source.playbackState === source.FINISHED_STATE)) {
+                    isAudioContextUnlocked = true;
+                    Module.setStatus('Wab Audio API unlocked successfully!');
+                } else {
+                    Module.setStatus('Failed to unlock Web Audio APIi. This browser seems to not be supported');
+                }
+            }, 0);
+        }
+    }, false);
 
     function playSound(filename){   
        document.getElementById("sound").innerHTML='<audio id="soundInner"><source src="' + filename + '.mp3" type="audio/mpeg" /><embed hidden="true" autostart="true" loop="false" src="' + filename +'.mp3" /></audio>';
