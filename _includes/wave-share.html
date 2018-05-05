@@ -53,10 +53,12 @@
                         <option value=1 selected>Fast</option>
                         <option value=2>Fastest</option>
                         <option value=3>Ultrasonic</option>
+                        <!--
                         <option value=4>OLD Near/Quiet</option>
                         <option value=5>OLD Far/Noisy</option>
                         <option value=6>OLD Fast</option>
                         <option value=7>OLD Ultrasonic</option>
+                        --!>
                     </select>
                     <label hidden id="paramFreqDelta"></label>
                     <label hidden id="paramFreqStart"></label>
@@ -70,8 +72,8 @@
             </tr>
             <tr><td colspan=4></td></tr>
             <tr>
-                <td> Select file: </td>
-                <td>
+                <td colspan=2>
+                    Select file:
                     <form id="fileInfo">
                         <input type="file" id="fileInput" name="files"/>
                     </form>
@@ -373,7 +375,8 @@
 
         playSound("/media/plucky");
         var x = document.getElementById("main-controls");
-        x.style.display = "block";
+        //x.style.display = "block";
+        x.hidden = false;
     }
 
     Module.setStatus('Initializing...');
