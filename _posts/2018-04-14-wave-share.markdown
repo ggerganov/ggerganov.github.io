@@ -9,4 +9,6 @@ categories: jekyll update
 ---
 
 Peer-to-peer file sharing using WebRTC. Signaling is performed through sound.
-No server-side is required. Make sure to allow microphone capture on this page.
+No server-side is required. Make sure to unplug your headphones and allow
+microphone capture on this page. Watch a tutorial
+<a href="https://youtu.be/d30QDrKyQkg">here</a>.
