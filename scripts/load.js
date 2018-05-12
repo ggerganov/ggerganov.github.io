@@ -1124,11 +1124,84 @@ function abortOnCannotGrowMemory() {
   abort('Cannot enlarge memory arrays. Either (1) compile with  -s TOTAL_MEMORY=X  with X higher than the current value ' + TOTAL_MEMORY + ', (2) compile with  -s ALLOW_MEMORY_GROWTH=1  which allows increasing the size at runtime but prevents some optimizations, (3) set Module.TOTAL_MEMORY to a higher value before the program runs, or (4) if you want malloc to return NULL (0) instead of this abort, compile with  -s ABORTING_MALLOC=0 ');
 }
 
+if (!Module['reallocBuffer']) Module['reallocBuffer'] = function(size) {
+  var ret;
+  try {
+    if (ArrayBuffer.transfer) {
+      ret = ArrayBuffer.transfer(buffer, size);
+    } else {
+      var oldHEAP8 = HEAP8;
+      ret = new ArrayBuffer(size);
+      var temp = new Int8Array(ret);
+      temp.set(oldHEAP8);
+    }
+  } catch(e) {
+    return false;
+  }
+  var success = _emscripten_replace_memory(ret);
+  if (!success) return false;
+  return ret;
+};
 
 function enlargeMemory() {
-  abortOnCannotGrowMemory();
+  // TOTAL_MEMORY is the current size of the actual array, and DYNAMICTOP is the new top.
+  assert(HEAP32[DYNAMICTOP_PTR>>2] > TOTAL_MEMORY); // This function should only ever be called after the ceiling of the dynamic heap has already been bumped to exceed the current total size of the asm.js heap.
+
+
+  var PAGE_MULTIPLE = Module["usingWasm"] ? WASM_PAGE_SIZE : ASMJS_PAGE_SIZE; // In wasm, heap size must be a multiple of 64KB. In asm.js, they need to be multiples of 16MB.
+  var LIMIT = 2147483648 - PAGE_MULTIPLE; // We can do one page short of 2GB as theoretical maximum.
+
+  if (HEAP32[DYNAMICTOP_PTR>>2] > LIMIT) {
+    Module.printErr('Cannot enlarge memory, asked to go up to ' + HEAP32[DYNAMICTOP_PTR>>2] + ' bytes, but the limit is ' + LIMIT + ' bytes!');
+    return false;
+  }
+
+  var OLD_TOTAL_MEMORY = TOTAL_MEMORY;
+  TOTAL_MEMORY = Math.max(TOTAL_MEMORY, MIN_TOTAL_MEMORY); // So the loop below will not be infinite, and minimum asm.js memory size is 16MB.
+
+  while (TOTAL_MEMORY < HEAP32[DYNAMICTOP_PTR>>2]) { // Keep incrementing the heap size as long as it's less than what is requested.
+    if (TOTAL_MEMORY <= 536870912) {
+      TOTAL_MEMORY = alignUp(2 * TOTAL_MEMORY, PAGE_MULTIPLE); // Simple heuristic: double until 1GB...
+    } else {
+      TOTAL_MEMORY = Math.min(alignUp((3 * TOTAL_MEMORY + 2147483648) / 4, PAGE_MULTIPLE), LIMIT); // ..., but after that, add smaller increments towards 2GB, which we cannot reach
+    }
+  }
+
+  var start = Date.now();
+
+  var replacement = Module['reallocBuffer'](TOTAL_MEMORY);
+  if (!replacement || replacement.byteLength != TOTAL_MEMORY) {
+    Module.printErr('Failed to grow the heap from ' + OLD_TOTAL_MEMORY + ' bytes to ' + TOTAL_MEMORY + ' bytes, not enough memory!');
+    if (replacement) {
+      Module.printErr('Expected to get back a buffer of size ' + TOTAL_MEMORY + ' bytes, but instead got back a buffer of size ' + replacement.byteLength);
+    }
+    // restore the state to before this call, we failed
+    TOTAL_MEMORY = OLD_TOTAL_MEMORY;
+    return false;
+  }
+
+  // everything worked
+
+  updateGlobalBuffer(replacement);
+  updateGlobalBufferViews();
+
+  Module.printErr('enlarged memory arrays from ' + OLD_TOTAL_MEMORY + ' to ' + TOTAL_MEMORY + ', took ' + (Date.now() - start) + ' ms (has ArrayBuffer.transfer? ' + (!!ArrayBuffer.transfer) + ')');
+
+  if (!Module["usingWasm"]) {
+    Module.printErr('Warning: Enlarging memory arrays, this is not fast! ' + [OLD_TOTAL_MEMORY, TOTAL_MEMORY]);
+  }
+
+
+  return true;
 }
 
+var byteLength;
+try {
+  byteLength = Function.prototype.call.bind(Object.getOwnPropertyDescriptor(ArrayBuffer.prototype, 'byteLength').get);
+  byteLength(new ArrayBuffer(4)); // can fail on older ie
+} catch(e) { // can fail on older node/v8
+  byteLength = function(buffer) { return buffer.byteLength; };
+}
 
 var TOTAL_STACK = Module['TOTAL_STACK'] || 5242880;
 var TOTAL_MEMORY = Module['TOTAL_MEMORY'] || 16777216;
@@ -1471,7 +1544,7 @@ STATICTOP = STATIC_BASE + 4560;
 /* global initializers */  __ATINIT__.push();
 
 
-memoryInitializer = "data:application/octet-stream;base64,DAAAAAUAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIAAAADAAAAyA0AAAAEAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAr/////AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACYDQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAExvYWRlZCBmaWxlIG9mIHNpemUgJXp1IGJ5dGVzCgBGaXJzdCAlenUgYnl0ZXMgb2YgdGhlIGZpbGUgKDAgcmVwbGFjZWQgd2l0aCAnLicpOgoAJWMACgBCdWlsZCB0aW1lOiAlcwoAU2F0IEZlYiAxMCAxMzozMjo0MCBFRVQgMjAxOAARAAoAERERAAAAAAUAAAAAAAAJAAAAAAsAAAAAAAAAABEADwoREREDCgcAARMJCwsAAAkGCwAACwAGEQAAABEREQAAAAAAAAAAAAAAAAAAAAALAAAAAAAAAAARAAoKERERAAoAAAIACQsAAAAJAAsAAAsAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADAAAAAAAAAAAAAAADAAAAAAMAAAAAAkMAAAAAAAMAAAMAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA4AAAAAAAAAAAAAAA0AAAAEDQAAAAAJDgAAAAAADgAADgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAPAAAAAA8AAAAACRAAAAAAABAAABAAABIAAAASEhIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEgAAABISEgAAAAAAAAkAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAsAAAAAAAAAAAAAAAoAAAAACgAAAAAJCwAAAAAACwAACwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMAAAAAAAAAAAAAAAMAAAAAAwAAAAACQwAAAAAAAwAAAwAAC0rICAgMFgweAAobnVsbCkALTBYKzBYIDBYLTB4KzB4IDB4AGluZgBJTkYAbmFuAE5BTgAwMTIzNDU2Nzg5QUJDREVGLgBUISIZDQECAxFLHAwQBAsdEh4naG5vcHFiIAUGDxMUFRoIFgcoJBcYCQoOGx8lI4OCfSYqKzw9Pj9DR0pNWFlaW1xdXl9gYWNkZWZnaWprbHJzdHl6e3wASWxsZWdhbCBieXRlIHNlcXVlbmNlAERvbWFpbiBlcnJvcgBSZXN1bHQgbm90IHJlcHJlc2VudGFibGUATm90IGEgdHR5AFBlcm1pc3Npb24gZGVuaWVkAE9wZXJhdGlvbiBub3QgcGVybWl0dGVkAE5vIHN1Y2ggZmlsZSBvciBkaXJlY3RvcnkATm8gc3VjaCBwcm9jZXNzAEZpbGUgZXhpc3RzAFZhbHVlIHRvbyBsYXJnZSBmb3IgZGF0YSB0eXBlAE5vIHNwYWNlIGxlZnQgb24gZGV2aWNlAE91dCBvZiBtZW1vcnkAUmVzb3VyY2UgYnVzeQBJbnRlcnJ1cHRlZCBzeXN0ZW0gY2FsbABSZXNvdXJjZSB0ZW1wb3JhcmlseSB1bmF2YWlsYWJsZQBJbnZhbGlkIHNlZWsAQ3Jvc3MtZGV2aWNlIGxpbmsAUmVhZC1vbmx5IGZpbGUgc3lzdGVtAERpcmVjdG9yeSBub3QgZW1wdHkAQ29ubmVjdGlvbiByZXNldCBieSBwZWVyAE9wZXJhdGlvbiB0aW1lZCBvdXQAQ29ubmVjdGlvbiByZWZ1c2VkAEhvc3QgaXMgZG93bgBIb3N0IGlzIHVucmVhY2hhYmxlAEFkZHJlc3MgaW4gdXNlAEJyb2tlbiBwaXBlAEkvTyBlcnJvcgBObyBzdWNoIGRldmljZSBvciBhZGRyZXNzAEJsb2NrIGRldmljZSByZXF1aXJlZABObyBzdWNoIGRldmljZQBOb3QgYSBkaXJlY3RvcnkASXMgYSBkaXJlY3RvcnkAVGV4dCBmaWxlIGJ1c3kARXhlYyBmb3JtYXQgZXJyb3IASW52YWxpZCBhcmd1bWVudABBcmd1bWVudCBsaXN0IHRvbyBsb25nAFN5bWJvbGljIGxpbmsgbG9vcABGaWxlbmFtZSB0b28gbG9uZwBUb28gbWFueSBvcGVuIGZpbGVzIGluIHN5c3RlbQBObyBmaWxlIGRlc2NyaXB0b3JzIGF2YWlsYWJsZQBCYWQgZmlsZSBkZXNjcmlwdG9yAE5vIGNoaWxkIHByb2Nlc3MAQmFkIGFkZHJlc3MARmlsZSB0b28gbGFyZ2UAVG9vIG1hbnkgbGlua3MATm8gbG9ja3MgYXZhaWxhYmxlAFJlc291cmNlIGRlYWRsb2NrIHdvdWxkIG9jY3VyAFN0YXRlIG5vdCByZWNvdmVyYWJsZQBQcmV2aW91cyBvd25lciBkaWVkAE9wZXJhdGlvbiBjYW5jZWxlZABGdW5jdGlvbiBub3QgaW1wbGVtZW50ZWQATm8gbWVzc2FnZSBvZiBkZXNpcmVkIHR5cGUASWRlbnRpZmllciByZW1vdmVkAERldmljZSBub3QgYSBzdHJlYW0ATm8gZGF0YSBhdmFpbGFibGUARGV2aWNlIHRpbWVvdXQAT3V0IG9mIHN0cmVhbXMgcmVzb3VyY2VzAExpbmsgaGFzIGJlZW4gc2V2ZXJlZABQcm90b2NvbCBlcnJvcgBCYWQgbWVzc2FnZQBGaWxlIGRlc2NyaXB0b3IgaW4gYmFkIHN0YXRlAE5vdCBhIHNvY2tldABEZXN0aW5hdGlvbiBhZGRyZXNzIHJlcXVpcmVkAE1lc3NhZ2UgdG9vIGxhcmdlAFByb3RvY29sIHdyb25nIHR5cGUgZm9yIHNvY2tldABQcm90b2NvbCBub3QgYXZhaWxhYmxlAFByb3RvY29sIG5vdCBzdXBwb3J0ZWQAU29ja2V0IHR5cGUgbm90IHN1cHBvcnRlZABOb3Qgc3VwcG9ydGVkAFByb3RvY29sIGZhbWlseSBub3Qgc3VwcG9ydGVkAEFkZHJlc3MgZmFtaWx5IG5vdCBzdXBwb3J0ZWQgYnkgcHJvdG9jb2wAQWRkcmVzcyBub3QgYXZhaWxhYmxlAE5ldHdvcmsgaXMgZG93bgBOZXR3b3JrIHVucmVhY2hhYmxlAENvbm5lY3Rpb24gcmVzZXQgYnkgbmV0d29yawBDb25uZWN0aW9uIGFib3J0ZWQATm8gYnVmZmVyIHNwYWNlIGF2YWlsYWJsZQBTb2NrZXQgaXMgY29ubmVjdGVkAFNvY2tldCBub3QgY29ubmVjdGVkAENhbm5vdCBzZW5kIGFmdGVyIHNvY2tldCBzaHV0ZG93bgBPcGVyYXRpb24gYWxyZWFkeSBpbiBwcm9ncmVzcwBPcGVyYXRpb24gaW4gcHJvZ3Jlc3MAU3RhbGUgZmlsZSBoYW5kbGUAUmVtb3RlIEkvTyBlcnJvcgBRdW90YSBleGNlZWRlZABObyBtZWRpdW0gZm91bmQAV3JvbmcgbWVkaXVtIHR5cGUATm8gZXJyb3IgaW5mb3JtYXRpb24=";
+memoryInitializer = "data:application/octet-stream;base64,DAAAAAUAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIAAAADAAAAyA0AAAAEAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAr/////AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACYDQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAExvYWRlZCBmaWxlIG9mIHNpemUgJXp1IGJ5dGVzCgBGaXJzdCAlenUgYnl0ZXMgb2YgdGhlIGZpbGUgKDAgcmVwbGFjZWQgd2l0aCAnLicpOgoAJWMACgBCdWlsZCB0aW1lOiAlcwoAU2F0IE1heSAxMiAxMjoyNDoxNCBFRVNUIDIwMTgAEQAKABEREQAAAAAFAAAAAAAACQAAAAALAAAAAAAAAAARAA8KERERAwoHAAETCQsLAAAJBgsAAAsABhEAAAAREREAAAAAAAAAAAAAAAAAAAAACwAAAAAAAAAAEQAKChEREQAKAAACAAkLAAAACQALAAALAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAwAAAAAAAAAAAAAAAwAAAAADAAAAAAJDAAAAAAADAAADAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAOAAAAAAAAAAAAAAANAAAABA0AAAAACQ4AAAAAAA4AAA4AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAADwAAAAAPAAAAAAkQAAAAAAAQAAAQAAASAAAAEhISAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABIAAAASEhIAAAAAAAAJAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAALAAAAAAAAAAAAAAAKAAAAAAoAAAAACQsAAAAAAAsAAAsAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADAAAAAAAAAAAAAAADAAAAAAMAAAAAAkMAAAAAAAMAAAMAAAtKyAgIDBYMHgAKG51bGwpAC0wWCswWCAwWC0weCsweCAweABpbmYASU5GAG5hbgBOQU4AMDEyMzQ1Njc4OUFCQ0RFRi4AVCEiGQ0BAgMRSxwMEAQLHRIeJ2hub3BxYiAFBg8TFBUaCBYHKCQXGAkKDhsfJSODgn0mKis8PT4/Q0dKTVhZWltcXV5fYGFjZGVmZ2lqa2xyc3R5ent8AElsbGVnYWwgYnl0ZSBzZXF1ZW5jZQBEb21haW4gZXJyb3IAUmVzdWx0IG5vdCByZXByZXNlbnRhYmxlAE5vdCBhIHR0eQBQZXJtaXNzaW9uIGRlbmllZABPcGVyYXRpb24gbm90IHBlcm1pdHRlZABObyBzdWNoIGZpbGUgb3IgZGlyZWN0b3J5AE5vIHN1Y2ggcHJvY2VzcwBGaWxlIGV4aXN0cwBWYWx1ZSB0b28gbGFyZ2UgZm9yIGRhdGEgdHlwZQBObyBzcGFjZSBsZWZ0IG9uIGRldmljZQBPdXQgb2YgbWVtb3J5AFJlc291cmNlIGJ1c3kASW50ZXJydXB0ZWQgc3lzdGVtIGNhbGwAUmVzb3VyY2UgdGVtcG9yYXJpbHkgdW5hdmFpbGFibGUASW52YWxpZCBzZWVrAENyb3NzLWRldmljZSBsaW5rAFJlYWQtb25seSBmaWxlIHN5c3RlbQBEaXJlY3Rvcnkgbm90IGVtcHR5AENvbm5lY3Rpb24gcmVzZXQgYnkgcGVlcgBPcGVyYXRpb24gdGltZWQgb3V0AENvbm5lY3Rpb24gcmVmdXNlZABIb3N0IGlzIGRvd24ASG9zdCBpcyB1bnJlYWNoYWJsZQBBZGRyZXNzIGluIHVzZQBCcm9rZW4gcGlwZQBJL08gZXJyb3IATm8gc3VjaCBkZXZpY2Ugb3IgYWRkcmVzcwBCbG9jayBkZXZpY2UgcmVxdWlyZWQATm8gc3VjaCBkZXZpY2UATm90IGEgZGlyZWN0b3J5AElzIGEgZGlyZWN0b3J5AFRleHQgZmlsZSBidXN5AEV4ZWMgZm9ybWF0IGVycm9yAEludmFsaWQgYXJndW1lbnQAQXJndW1lbnQgbGlzdCB0b28gbG9uZwBTeW1ib2xpYyBsaW5rIGxvb3AARmlsZW5hbWUgdG9vIGxvbmcAVG9vIG1hbnkgb3BlbiBmaWxlcyBpbiBzeXN0ZW0ATm8gZmlsZSBkZXNjcmlwdG9ycyBhdmFpbGFibGUAQmFkIGZpbGUgZGVzY3JpcHRvcgBObyBjaGlsZCBwcm9jZXNzAEJhZCBhZGRyZXNzAEZpbGUgdG9vIGxhcmdlAFRvbyBtYW55IGxpbmtzAE5vIGxvY2tzIGF2YWlsYWJsZQBSZXNvdXJjZSBkZWFkbG9jayB3b3VsZCBvY2N1cgBTdGF0ZSBub3QgcmVjb3ZlcmFibGUAUHJldmlvdXMgb3duZXIgZGllZABPcGVyYXRpb24gY2FuY2VsZWQARnVuY3Rpb24gbm90IGltcGxlbWVudGVkAE5vIG1lc3NhZ2Ugb2YgZGVzaXJlZCB0eXBlAElkZW50aWZpZXIgcmVtb3ZlZABEZXZpY2Ugbm90IGEgc3RyZWFtAE5vIGRhdGEgYXZhaWxhYmxlAERldmljZSB0aW1lb3V0AE91dCBvZiBzdHJlYW1zIHJlc291cmNlcwBMaW5rIGhhcyBiZWVuIHNldmVyZWQAUHJvdG9jb2wgZXJyb3IAQmFkIG1lc3NhZ2UARmlsZSBkZXNjcmlwdG9yIGluIGJhZCBzdGF0ZQBOb3QgYSBzb2NrZXQARGVzdGluYXRpb24gYWRkcmVzcyByZXF1aXJlZABNZXNzYWdlIHRvbyBsYXJnZQBQcm90b2NvbCB3cm9uZyB0eXBlIGZvciBzb2NrZXQAUHJvdG9jb2wgbm90IGF2YWlsYWJsZQBQcm90b2NvbCBub3Qgc3VwcG9ydGVkAFNvY2tldCB0eXBlIG5vdCBzdXBwb3J0ZWQATm90IHN1cHBvcnRlZABQcm90b2NvbCBmYW1pbHkgbm90IHN1cHBvcnRlZABBZGRyZXNzIGZhbWlseSBub3Qgc3VwcG9ydGVkIGJ5IHByb3RvY29sAEFkZHJlc3Mgbm90IGF2YWlsYWJsZQBOZXR3b3JrIGlzIGRvd24ATmV0d29yayB1bnJlYWNoYWJsZQBDb25uZWN0aW9uIHJlc2V0IGJ5IG5ldHdvcmsAQ29ubmVjdGlvbiBhYm9ydGVkAE5vIGJ1ZmZlciBzcGFjZSBhdmFpbGFibGUAU29ja2V0IGlzIGNvbm5lY3RlZABTb2NrZXQgbm90IGNvbm5lY3RlZABDYW5ub3Qgc2VuZCBhZnRlciBzb2NrZXQgc2h1dGRvd24AT3BlcmF0aW9uIGFscmVhZHkgaW4gcHJvZ3Jlc3MAT3BlcmF0aW9uIGluIHByb2dyZXNzAFN0YWxlIGZpbGUgaGFuZGxlAFJlbW90ZSBJL08gZXJyb3IAUXVvdGEgZXhjZWVkZWQATm8gbWVkaXVtIGZvdW5kAFdyb25nIG1lZGl1bSB0eXBlAE5vIGVycm9yIGluZm9ybWF0aW9u";
 
 
 
@@ -2584,7 +2657,7 @@ function invoke_v(index) {
   }
 }
 
-Module.asmGlobalArg = { "Math": Math, "Int8Array": Int8Array, "Int16Array": Int16Array, "Int32Array": Int32Array, "Uint8Array": Uint8Array, "Uint16Array": Uint16Array, "Uint32Array": Uint32Array, "Float32Array": Float32Array, "Float64Array": Float64Array, "NaN": NaN, "Infinity": Infinity };
+Module.asmGlobalArg = { "Math": Math, "Int8Array": Int8Array, "Int16Array": Int16Array, "Int32Array": Int32Array, "Uint8Array": Uint8Array, "Uint16Array": Uint16Array, "Uint32Array": Uint32Array, "Float32Array": Float32Array, "Float64Array": Float64Array, "NaN": NaN, "Infinity": Infinity, "byteLength": byteLength };
 
 Module.asmLibraryArg = { "abort": abort, "assert": assert, "enlargeMemory": enlargeMemory, "getTotalMemory": getTotalMemory, "abortOnCannotGrowMemory": abortOnCannotGrowMemory, "abortStackOverflow": abortStackOverflow, "nullFunc_ii": nullFunc_ii, "nullFunc_iiii": nullFunc_iiii, "nullFunc_v": nullFunc_v, "invoke_ii": invoke_ii, "invoke_iiii": invoke_iiii, "invoke_v": invoke_v, "___lock": ___lock, "___setErrNo": ___setErrNo, "___syscall140": ___syscall140, "___syscall146": ___syscall146, "___syscall54": ___syscall54, "___syscall6": ___syscall6, "___unlock": ___unlock, "_emscripten_get_now": _emscripten_get_now, "_emscripten_memcpy_big": _emscripten_memcpy_big, "_emscripten_set_main_loop": _emscripten_set_main_loop, "_emscripten_set_main_loop_timing": _emscripten_set_main_loop_timing, "flush_NO_FILESYSTEM": flush_NO_FILESYSTEM, "DYNAMICTOP_PTR": DYNAMICTOP_PTR, "tempDoublePtr": tempDoublePtr, "ABORT": ABORT, "STACKTOP": STACKTOP, "STACK_MAX": STACK_MAX, "cttz_i8": cttz_i8 };
 // EMSCRIPTEN_START_ASM
@@ -2592,14 +2665,23 @@ var asm = (/** @suppress {uselessCode} */ function(global, env, buffer) {
 'almost asm';
 
 
-  var HEAP8 = new global.Int8Array(buffer);
-  var HEAP16 = new global.Int16Array(buffer);
-  var HEAP32 = new global.Int32Array(buffer);
-  var HEAPU8 = new global.Uint8Array(buffer);
-  var HEAPU16 = new global.Uint16Array(buffer);
-  var HEAPU32 = new global.Uint32Array(buffer);
-  var HEAPF32 = new global.Float32Array(buffer);
-  var HEAPF64 = new global.Float64Array(buffer);
+  var Int8View = global.Int8Array;
+  var HEAP8 = new Int8View(buffer);
+  var Int16View = global.Int16Array;
+  var HEAP16 = new Int16View(buffer);
+  var Int32View = global.Int32Array;
+  var HEAP32 = new Int32View(buffer);
+  var Uint8View = global.Uint8Array;
+  var HEAPU8 = new Uint8View(buffer);
+  var Uint16View = global.Uint16Array;
+  var HEAPU16 = new Uint16View(buffer);
+  var Uint32View = global.Uint32Array;
+  var HEAPU32 = new Uint32View(buffer);
+  var Float32View = global.Float32Array;
+  var HEAPF32 = new Float32View(buffer);
+  var Float64View = global.Float64Array;
+  var HEAPF64 = new Float64View(buffer);
+  var byteLength = global.byteLength;
 
   var DYNAMICTOP_PTR=env.DYNAMICTOP_PTR|0;
   var tempDoublePtr=env.tempDoublePtr|0;
@@ -2660,6 +2742,20 @@ var asm = (/** @suppress {uselessCode} */ function(global, env, buffer) {
   var flush_NO_FILESYSTEM=env.flush_NO_FILESYSTEM;
   var tempFloat = 0.0;
 
+function _emscripten_replace_memory(newBuffer) {
+  if ((byteLength(newBuffer) & 0xffffff || byteLength(newBuffer) <= 0xffffff) || byteLength(newBuffer) > 0x80000000) return false;
+  HEAP8 = new Int8View(newBuffer);
+  HEAP16 = new Int16View(newBuffer);
+  HEAP32 = new Int32View(newBuffer);
+  HEAPU8 = new Uint8View(newBuffer);
+  HEAPU16 = new Uint16View(newBuffer);
+  HEAPU32 = new Uint32View(newBuffer);
+  HEAPF32 = new Float32View(newBuffer);
+  HEAPF64 = new Float64View(newBuffer);
+  buffer = newBuffer;
+  return true;
+}
+
 // EMSCRIPTEN_START_FUNCS
 
 function stackAlloc(size) {
@@ -2707,78 +2803,55 @@ function _setFile($0,$1) {
  $0 = $0|0;
  $1 = $1|0;
  var $10 = 0, $11 = 0, $12 = 0, $13 = 0, $14 = 0, $15 = 0, $16 = 0, $17 = 0, $18 = 0, $19 = 0, $2 = 0, $20 = 0, $21 = 0, $22 = 0, $23 = 0, $24 = 0, $25 = 0, $26 = 0, $27 = 0, $28 = 0;
- var $29 = 0, $3 = 0, $30 = 0, $31 = 0, $32 = 0, $33 = 0, $34 = 0, $35 = 0, $36 = 0, $37 = 0, $38 = 0, $39 = 0, $4 = 0, $40 = 0, $41 = 0, $42 = 0, $43 = 0, $44 = 0, $45 = 0, $46 = 0;
- var $47 = 0, $5 = 0, $6 = 0, $7 = 0, $8 = 0, $9 = 0, $vararg_buffer = 0, $vararg_buffer1 = 0, $vararg_buffer4 = 0, $vararg_buffer7 = 0, label = 0, sp = 0;
+ var $3 = 0, $4 = 0, $5 = 0, $6 = 0, $7 = 0, $8 = 0, $9 = 0, $vararg_buffer = 0, $vararg_buffer1 = 0, $vararg_buffer4 = 0, $vararg_buffer7 = 0, label = 0, sp = 0;
  sp = STACKTOP;
- STACKTOP = STACKTOP + 96|0; if ((STACKTOP|0) >= (STACK_MAX|0)) abortStackOverflow(96|0);
- $vararg_buffer7 = sp + 32|0;
- $vararg_buffer4 = sp + 24|0;
- $vararg_buffer1 = sp + 16|0;
- $vararg_buffer = sp + 8|0;
- $7 = sp;
- $10 = sp + 84|0;
- $11 = sp + 52|0;
- $14 = sp + 40|0;
- HEAP32[$11>>2] = $0;
- $12 = $1;
- $16 = HEAP32[$11>>2]|0;
- HEAP32[$vararg_buffer>>2] = $16;
+ STACKTOP = STACKTOP + 48|0; if ((STACKTOP|0) >= (STACK_MAX|0)) abortStackOverflow(48|0);
+ $vararg_buffer7 = sp + 24|0;
+ $vararg_buffer4 = sp + 16|0;
+ $vararg_buffer1 = sp + 8|0;
+ $vararg_buffer = sp;
+ $2 = $0;
+ $3 = $1;
+ $6 = $2;
+ HEAP32[$vararg_buffer>>2] = $6;
  (_printf(384,$vararg_buffer)|0);
- HEAP32[$14>>2] = 100;
- $8 = $14;
- $9 = $11;
- $17 = $8;
- $18 = $9;
- ;HEAP8[$7>>0]=HEAP8[$10>>0]|0;
- $5 = $17;
- $6 = $18;
- $19 = $6;
- $20 = $5;
- $2 = $7;
- $3 = $19;
- $4 = $20;
- $21 = $3;
- $22 = HEAP32[$21>>2]|0;
- $23 = $4;
- $24 = HEAP32[$23>>2]|0;
- $25 = ($22>>>0)<($24>>>0);
- $26 = $6;
- $27 = $5;
- $28 = $25 ? $26 : $27;
- $29 = HEAP32[$28>>2]|0;
- $13 = $29;
- $30 = $13;
- HEAP32[$vararg_buffer1>>2] = $30;
+ $7 = $2;
+ $8 = ($7>>>0)<(100);
+ $9 = $2;
+ $10 = $8 ? $9 : 100;
+ $4 = $10;
+ $11 = $4;
+ HEAP32[$vararg_buffer1>>2] = $11;
  (_printf(415,$vararg_buffer1)|0);
- $15 = 0;
+ $5 = 0;
  while(1) {
-  $31 = $15;
-  $32 = $13;
-  $33 = ($31>>>0)<($32>>>0);
-  if (!($33)) {
+  $12 = $5;
+  $13 = $4;
+  $14 = ($12>>>0)<($13>>>0);
+  if (!($14)) {
    break;
   }
-  $34 = $12;
-  $35 = $15;
-  $36 = (($34) + ($35)|0);
-  $37 = HEAP8[$36>>0]|0;
-  $38 = $37 << 24 >> 24;
-  $39 = ($38|0)==(0);
-  if ($39) {
-   $45 = 46;
+  $15 = $3;
+  $16 = $5;
+  $17 = (($15) + ($16)|0);
+  $18 = HEAP8[$17>>0]|0;
+  $19 = $18 << 24 >> 24;
+  $20 = ($19|0)==(0);
+  if ($20) {
+   $26 = 46;
   } else {
-   $40 = $12;
-   $41 = $15;
-   $42 = (($40) + ($41)|0);
-   $43 = HEAP8[$42>>0]|0;
-   $45 = $43;
+   $21 = $3;
+   $22 = $5;
+   $23 = (($21) + ($22)|0);
+   $24 = HEAP8[$23>>0]|0;
+   $26 = $24;
   }
-  $44 = $45 << 24 >> 24;
-  HEAP32[$vararg_buffer4>>2] = $44;
+  $25 = $26 << 24 >> 24;
+  HEAP32[$vararg_buffer4>>2] = $25;
   (_printf(467,$vararg_buffer4)|0);
-  $46 = $15;
-  $47 = (($46) + 1)|0;
-  $15 = $47;
+  $27 = $5;
+  $28 = (($27) + 1)|0;
+  $5 = $28;
  }
  (_printf(470,$vararg_buffer7)|0);
  STACKTOP = sp;return;
@@ -6057,7 +6130,7 @@ function _printf_core($0,$1,$2,$3,$4) {
    $140 = HEAP8[$135>>0]|0;
    $141 = $140 << 24 >> 24;
    $142 = (($141) + -65)|0;
-   $143 = ((517 + (($$0252*58)|0)|0) + ($142)|0);
+   $143 = ((518 + (($$0252*58)|0)|0) + ($142)|0);
    $144 = HEAP8[$143>>0]|0;
    $145 = $144&255;
    $146 = (($145) + -1)|0;
@@ -6235,7 +6308,7 @@ function _printf_core($0,$1,$2,$3,$4) {
     $229 = (($227) + 1)|0;
     $230 = $225 | $228;
     $$0254$$0254$ = $230 ? $$0254 : $229;
-    $$0228 = $223;$$1233 = 0;$$1238 = 981;$$2256 = $$0254$$0254$;$$4266 = $$1263$;$256 = $219;$258 = $222;
+    $$0228 = $223;$$1233 = 0;$$1238 = 982;$$2256 = $$0254$$0254$;$$4266 = $$1263$;$256 = $219;$258 = $222;
     label = 66;
     break;
    }
@@ -6256,7 +6329,7 @@ function _printf_core($0,$1,$2,$3,$4) {
      $242 = (($240) + 4)|0;
      $243 = $242;
      HEAP32[$243>>2] = $239;
-     $$0232 = 1;$$0237 = 981;$250 = $238;$251 = $239;
+     $$0232 = 1;$$0237 = 982;$250 = $238;$251 = $239;
      label = 65;
      break L70;
     } else {
@@ -6264,8 +6337,8 @@ function _printf_core($0,$1,$2,$3,$4) {
      $245 = ($244|0)==(0);
      $246 = $$1263$ & 1;
      $247 = ($246|0)==(0);
-     $$ = $247 ? 981 : (983);
-     $$$ = $245 ? $$ : (982);
+     $$ = $247 ? 982 : (984);
+     $$$ = $245 ? $$ : (983);
      $248 = $$1263$ & 2049;
      $249 = ($248|0)!=(0);
      $$283$ = $249&1;
@@ -6282,7 +6355,7 @@ function _printf_core($0,$1,$2,$3,$4) {
     $175 = (($172) + 4)|0;
     $176 = $175;
     $177 = HEAP32[$176>>2]|0;
-    $$0232 = 0;$$0237 = 981;$250 = $174;$251 = $177;
+    $$0232 = 0;$$0237 = 982;$250 = $174;$251 = $177;
     label = 65;
     break;
    }
@@ -6295,7 +6368,7 @@ function _printf_core($0,$1,$2,$3,$4) {
     $272 = HEAP32[$271>>2]|0;
     $273 = $269&255;
     HEAP8[$13>>0] = $273;
-    $$2 = $13;$$2234 = 0;$$2239 = 981;$$2251 = $11;$$5 = 1;$$6268 = $171;
+    $$2 = $13;$$2234 = 0;$$2239 = 982;$$2251 = $11;$$5 = 1;$$6268 = $171;
     break;
    }
    case 109:  {
@@ -6309,7 +6382,7 @@ function _printf_core($0,$1,$2,$3,$4) {
    case 115:  {
     $277 = HEAP32[$6>>2]|0;
     $278 = ($277|0)!=(0|0);
-    $279 = $278 ? $277 : 991;
+    $279 = $278 ? $277 : 992;
     $$1 = $279;
     label = 70;
     break;
@@ -6349,7 +6422,7 @@ function _printf_core($0,$1,$2,$3,$4) {
     break;
    }
    default: {
-    $$2 = $21;$$2234 = 0;$$2239 = 981;$$2251 = $11;$$5 = $$0254;$$6268 = $$1263$;
+    $$2 = $21;$$2234 = 0;$$2239 = 982;$$2251 = $11;$$5 = $$0254;$$6268 = $$1263$;
    }
    }
   } while(0);
@@ -6371,8 +6444,8 @@ function _printf_core($0,$1,$2,$3,$4) {
     $214 = ($213|0)==(0);
     $or$cond282 = $214 | $212;
     $215 = $$1236 >> 4;
-    $216 = (981 + ($215)|0);
-    $$290 = $or$cond282 ? 981 : $216;
+    $216 = (982 + ($215)|0);
+    $$290 = $or$cond282 ? 982 : $216;
     $$291 = $or$cond282 ? 0 : 2;
     $$0228 = $209;$$1233 = $$291;$$1238 = $$290;$$2256 = $$1255;$$4266 = $$3265;$256 = $204;$258 = $207;
     label = 66;
@@ -6393,7 +6466,7 @@ function _printf_core($0,$1,$2,$3,$4) {
     $285 = (($$1) + ($$0254)|0);
     $$3257 = $281 ? $$0254 : $284;
     $$1250 = $281 ? $285 : $280;
-    $$2 = $$1;$$2234 = 0;$$2239 = 981;$$2251 = $$1250;$$5 = $$3257;$$6268 = $171;
+    $$2 = $$1;$$2234 = 0;$$2239 = 982;$$2251 = $$1250;$$5 = $$3257;$$6268 = $171;
    }
    else if ((label|0) == 74) {
     label = 0;
@@ -6929,7 +7002,7 @@ function _fmt_x($0,$1,$2,$3) {
   $$056 = $2;$15 = $1;$8 = $0;
   while(1) {
    $7 = $8 & 15;
-   $9 = (1033 + ($7)|0);
+   $9 = (1034 + ($7)|0);
    $10 = HEAP8[$9>>0]|0;
    $11 = $10&255;
    $12 = $11 | $3;
@@ -7287,14 +7360,14 @@ function _fmt_fp($0,$1,$2,$3,$4,$5) {
  $13 = ($12|0)<(0);
  if ($13) {
   $14 = -$1;
-  $$0471 = $14;$$0520 = 1;$$0521 = 998;
+  $$0471 = $14;$$0520 = 1;$$0521 = 999;
  } else {
   $15 = $4 & 2048;
   $16 = ($15|0)==(0);
   $17 = $4 & 1;
   $18 = ($17|0)==(0);
-  $$ = $18 ? (999) : (1004);
-  $$$ = $16 ? $$ : (1001);
+  $$ = $18 ? (1000) : (1005);
+  $$$ = $16 ? $$ : (1002);
   $19 = $4 & 2049;
   $20 = ($19|0)!=(0);
   $$534$ = $20&1;
@@ -7310,9 +7383,9 @@ function _fmt_fp($0,$1,$2,$3,$4,$5) {
   if ($25) {
    $26 = $5 & 32;
    $27 = ($26|0)!=(0);
-   $28 = $27 ? 1017 : 1021;
+   $28 = $27 ? 1018 : 1022;
    $29 = ($$0471 != $$0471) | (0.0 != 0.0);
-   $30 = $27 ? 1025 : 1029;
+   $30 = $27 ? 1026 : 1030;
    $$0510 = $29 ? $30 : $28;
    $31 = (($$0520) + 3)|0;
    $32 = $4 & -65537;
@@ -7406,7 +7479,7 @@ function _fmt_fp($0,$1,$2,$3,$4,$5) {
     $$0523 = $8;$$2473 = $$1472;
     while(1) {
      $80 = (~~(($$2473)));
-     $81 = (1033 + ($80)|0);
+     $81 = (1034 + ($80)|0);
      $82 = HEAP8[$81>>0]|0;
      $83 = $82&255;
      $84 = $41 | $83;
@@ -8028,7 +8101,7 @@ function _fmt_fp($0,$1,$2,$3,$4,$5) {
     }
     $342 = ($292|0)==(0);
     if (!($342)) {
-     _out($0,1049,1);
+     _out($0,1050,1);
     }
     $343 = ($340>>>0)<($$7505>>>0);
     $344 = ($$3477|0)>(0);
@@ -8109,7 +8182,7 @@ function _fmt_fp($0,$1,$2,$3,$4,$5) {
          $$2 = $375;
          break;
         }
-        _out($0,1049,1);
+        _out($0,1050,1);
         $$2 = $375;
        } else {
         $372 = ($$0>>>0)>($8>>>0);
@@ -8368,7 +8441,7 @@ function ___strerror_l($0,$1) {
  sp = STACKTOP;
  $$016 = 0;
  while(1) {
-  $3 = (1051 + ($$016)|0);
+  $3 = (1052 + ($$016)|0);
   $4 = HEAP8[$3>>0]|0;
   $5 = $4&255;
   $6 = ($5|0)==($0|0);
@@ -8379,7 +8452,7 @@ function ___strerror_l($0,$1) {
   $7 = (($$016) + 1)|0;
   $8 = ($7|0)==(87);
   if ($8) {
-   $$01214 = 1139;$$115 = 87;
+   $$01214 = 1140;$$115 = 87;
    label = 5;
    break;
   } else {
@@ -8389,9 +8462,9 @@ function ___strerror_l($0,$1) {
  if ((label|0) == 2) {
   $2 = ($$016|0)==(0);
   if ($2) {
-   $$012$lcssa = 1139;
+   $$012$lcssa = 1140;
   } else {
-   $$01214 = 1139;$$115 = $$016;
+   $$01214 = 1140;$$115 = $$016;
    label = 5;
   }
  }
@@ -9337,7 +9410,7 @@ var FUNCTION_TABLE_ii = [b0,___stdio_close];
 var FUNCTION_TABLE_iiii = [b1,b1,___stdout_write,___stdio_seek,b1,___stdio_write,b1,b1];
 var FUNCTION_TABLE_v = [b2,b2,b2,b2,__Z6updatev,b2,b2,b2];
 
-  return { ___errno_location: ___errno_location, ___udivdi3: ___udivdi3, ___uremdi3: ___uremdi3, _bitshift64Lshr: _bitshift64Lshr, _bitshift64Shl: _bitshift64Shl, _fflush: _fflush, _free: _free, _i64Add: _i64Add, _i64Subtract: _i64Subtract, _llvm_bswap_i32: _llvm_bswap_i32, _main: _main, _malloc: _malloc, _memcpy: _memcpy, _memset: _memset, _sbrk: _sbrk, _setFile: _setFile, dynCall_ii: dynCall_ii, dynCall_iiii: dynCall_iiii, dynCall_v: dynCall_v, establishStackSpace: establishStackSpace, getTempRet0: getTempRet0, runPostSets: runPostSets, setTempRet0: setTempRet0, setThrew: setThrew, stackAlloc: stackAlloc, stackRestore: stackRestore, stackSave: stackSave };
+  return { ___errno_location: ___errno_location, ___udivdi3: ___udivdi3, ___uremdi3: ___uremdi3, _bitshift64Lshr: _bitshift64Lshr, _bitshift64Shl: _bitshift64Shl, _emscripten_replace_memory: _emscripten_replace_memory, _fflush: _fflush, _free: _free, _i64Add: _i64Add, _i64Subtract: _i64Subtract, _llvm_bswap_i32: _llvm_bswap_i32, _main: _main, _malloc: _malloc, _memcpy: _memcpy, _memset: _memset, _sbrk: _sbrk, _setFile: _setFile, dynCall_ii: dynCall_ii, dynCall_iiii: dynCall_iiii, dynCall_v: dynCall_v, establishStackSpace: establishStackSpace, getTempRet0: getTempRet0, runPostSets: runPostSets, setTempRet0: setTempRet0, setThrew: setThrew, stackAlloc: stackAlloc, stackRestore: stackRestore, stackSave: stackSave };
 })
 // EMSCRIPTEN_END_ASM
 (Module.asmGlobalArg, Module.asmLibraryArg, buffer);
@@ -9472,6 +9545,7 @@ var ___udivdi3 = Module["___udivdi3"] = asm["___udivdi3"];
 var ___uremdi3 = Module["___uremdi3"] = asm["___uremdi3"];
 var _bitshift64Lshr = Module["_bitshift64Lshr"] = asm["_bitshift64Lshr"];
 var _bitshift64Shl = Module["_bitshift64Shl"] = asm["_bitshift64Shl"];
+var _emscripten_replace_memory = Module["_emscripten_replace_memory"] = asm["_emscripten_replace_memory"];
 var _fflush = Module["_fflush"] = asm["_fflush"];
 var _free = Module["_free"] = asm["_free"];
 var _i64Add = Module["_i64Add"] = asm["_i64Add"];
@@ -9531,7 +9605,7 @@ if (!Module["addOnPreMain"]) Module["addOnPreMain"] = function() { abort("'addOn
 if (!Module["addOnExit"]) Module["addOnExit"] = function() { abort("'addOnExit' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)") };
 if (!Module["addOnPostRun"]) Module["addOnPostRun"] = function() { abort("'addOnPostRun' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)") };
 if (!Module["writeStringToMemory"]) Module["writeStringToMemory"] = function() { abort("'writeStringToMemory' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)") };
-if (!Module["writeArrayToMemory"]) Module["writeArrayToMemory"] = function() { abort("'writeArrayToMemory' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)") };
+Module["writeArrayToMemory"] = writeArrayToMemory;
 if (!Module["writeAsciiToMemory"]) Module["writeAsciiToMemory"] = function() { abort("'writeAsciiToMemory' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)") };
 if (!Module["addRunDependency"]) Module["addRunDependency"] = function() { abort("'addRunDependency' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ). Alternatively, forcing filesystem support (-s FORCE_FILESYSTEM=1) can export this for you") };
 if (!Module["removeRunDependency"]) Module["removeRunDependency"] = function() { abort("'removeRunDependency' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ). Alternatively, forcing filesystem support (-s FORCE_FILESYSTEM=1) can export this for you") };

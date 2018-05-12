@@ -18,7 +18,7 @@
     function startRead()
     {
         var file = document.getElementById('file').files[0];
-        if(file)
+        if (file)
         {
             getAsText(file);
         }
@@ -38,20 +38,23 @@
             return;
         }
 
-        reader.readAsText(readFile, "UTF-8");
+        reader.readAsArrayBuffer(readFile);
         reader.onload = loaded;
         reader.onerror = errorHandler;
     }
 
     function loaded(evt)
     {
-        var fileString = evt.target.result;
-        Module.cwrap('setFile', '', ['number', 'string'])(fileString.length, fileString);
+        var data = new (Uint8Array)(evt.target.result);
+        var buffer = Module._malloc(data.length + 1);
+        Module.writeArrayToMemory(data, buffer, data.length + 1);
+        Module.cwrap('setFile', '', ['number', 'buffer'])(data.length, buffer);
+        Module._free(buffer);
     }
 
     function errorHandler(evt)
     {
-        if(evt.target.error.code == evt.target.error.NOT_READABLE_ERR)
+        if (evt.target.error.code == evt.target.error.NOT_READABLE_ERR)
         {
             document.getElementById('text-output').innerHTML = "Error reading file..."
         }
