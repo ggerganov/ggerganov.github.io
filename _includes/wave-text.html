@@ -5,12 +5,12 @@
 
         <table>
             <tr>
-                <td colspan=4 align="center">
+                <td colspan=3 align="center">
                     <button onClick="doInit()" id="butInit" disabled>Init</button>
                 </td>
             </tr>
             <tr>
-                <td colspan=4 align="center">
+                <td colspan=3 align="center">
 					<div class="led-box">
                         <p>Output:</p>
 					</div>
@@ -20,13 +20,10 @@
 					<div class="led-box">
                         <p>Browser:</p>
 					</div>
-					<div class="led-box">
-                        <p>WebRTC:</p>
-					</div>
                 </td>
             </tr>
             <tr>
-                <td colspan=4 align="center">
+                <td colspan=3 align="center">
 					<div class="led-box" id="has-device-output" title="Indicates if an audio output device is available">
 						<div class="led-yellow"></div>
 					</div>
@@ -36,22 +33,17 @@
                     <div class="led-box" id="is-browser-supported" title="Indicates if the browser is supported">
 						<div class="led-yellow"></div>
 					</div>
-                    <div class="led-box" id="is-webrtc-supported" title="Indicates if WebRTC is supported">
-						<div class="led-yellow"></div>
-					</div>
                 </td>
             </tr>
         </table>
         <table id="main-controls" hidden>
             <tr>
                 <td colspan=2>
-                    Local address: <select id="available-networks" name="available-networks"></select>
-                </td>
-                <td colspan=1>
+                    Tx protocol:
                     <select id="waveConfig" onChange="selectConfig(this.value);" title="Before broadcast/receive make sure this is set to the same value for all peers">
                         <option value=0>Normal</option>
-                        <option value=1 selected>Fast</option>
-                        <option value=2>Fastest</option>
+                        <option value=1>Fast</option>
+                        <option value=2 selected>Fastest</option>
                         <option value=3>Ultrasonic</option>
                         <!--
                         <option value=4>OLD Near/Quiet</option>
@@ -70,47 +62,24 @@
                                         / <label id="paramVolumeScroll"></label></td>
                 </td>
             </tr>
-            <tr><td colspan=4></td></tr>
+            <tr><td colspan=3></td></tr>
             <tr>
-                <td colspan=2>
-                    <form id="fileInfo">
-                        Select file:
-                        <input type="file" id="fileInput" name="files"/>
-                    </form>
-                </td>
-                <td>
-                    <button onClick="lockoutSubmit(this); senderInit();">Broadcast</button>
-                </td>
-                <td>
-                    <div class="progress">
-                        <div class="label">Send progress: </div>
-                        <progress id="sendProgress" max="0" value="0"></progress>
-                    </div>
+                <td colspan=3>
+                    <div>Rx data:</div> <textarea name="textarea" id="rxData" style="width:300px;height:100px;" disabled>
+                    </textarea><br>
+                    <div>Tx Data:</div> <textarea name="textarea" id="txData" style="width:300px;height:100px;">This is the message to transmit.</textarea><br>
                 </td>
             </tr>
-            <tr><td colspan=4></td></tr>
+            <tr><td colspan=3></td></tr>
             <tr>
-                <td colspan=2>
-                    <a id="peer-info">No active peers</a>
+                <td colspan=1>
+                    <a id="peer-info"></a>
                 </td>
-                <td>
+                <td colspan=1>
                     <a id="peer-receive"></a>
                 </td>
-                <td>
-                    <div class="progress">
-                        <div class="label">Receive progress: </div>
-                        <progress id="receiveProgress" max="0" value="0"></progress>
-                    </div>
-                </td>
-            </tr>
-            <tr>
-                <td colspan=4>
-                    <div id="bitrate"></div>
-                </td>
-            </tr>
-            <tr>
-                <td colspan=4>
-                    <a id="download"></a>
+                <td colspan=1>
+                    <button onClick="lockoutSubmit(this); transmitText(document.getElementById('txData').value);">Broadcast</button>
                 </td>
             </tr>
         </table>
@@ -136,7 +105,6 @@
 <script type='text/javascript'>
     var bufferRx = null;
     var brx = new Uint8Array(256);
-    var availableNetworks = [];
 
     function lockoutSubmit(button) {
         var oldValue = button.value;
@@ -205,7 +173,7 @@
             paramBytesPerTx.value = 3;
         }
 
-        Module.cwrap('setTxMode','',['number'])(0); // Fixed length mode
+        Module.cwrap('setTxMode','',['number'])(1); // Variable length mode
         Module.cwrap('setParameters','',['number','number','number','number','number','number','number'])(
             paramFreqDelta.value,
             paramFreqStart.value,
@@ -283,20 +251,6 @@
                 }
             }
         }
-
-		var isWebRTCSupported = availableNetworks.length;
-        {
-            var el = document.getElementById('is-webrtc-supported');
-            if (isWebRTCSupported) {
-                if (el.innerHTML != htmlGreenLED) {
-                    el.innerHTML = htmlGreenLED;
-                }
-            } else {
-                if (el.innerHTML != htmlYellowLED) {
-                    el.innerHTML = htmlYellowLED;
-                }
-            }
-        }
 	}
 
     var statusElement = document.getElementById('statusEm');
@@ -360,17 +314,8 @@
             updateScroll('Volume');
             bufferRx = Module._malloc(256);
             setInterval(updatePeerInfo, 100);
-            setInterval(checkRxForPeerData, 1000);
+            setInterval(updateRx, 1000);
             setInterval(checkStatus, 1000);
-            getIPs(function(ip){
-                availableNetworks.push(ip);
-                var sel = document.getElementById('available-networks');
-                var opt = document.createElement("option");
-                opt.value = ip;
-                opt.text = ip;
-
-                sel.appendChild(opt);
-            });
             isInitialized = true;
         }
 
@@ -415,9 +360,6 @@
     }
 
 </script>
-<base href="/scripts/wave-share/">
+<base href="/scripts/wave-text/">
 <script async type="text/javascript" src="wave.js"></script>
-<script type="text/javascript" src="sdp-transform/grammar.js"></script>
-<script type="text/javascript" src="sdp-transform/parser.js"></script>
-<script type="text/javascript" src="sdp-transform/writer.js"></script>
 <script type="text/javascript" src="main.js"></script>
