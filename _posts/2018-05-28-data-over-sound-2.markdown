@@ -8,7 +8,7 @@ categories: jekyll update
 ---
 
 The transmission reliability in my [previous post]({% post_url 2018-02-11-wave-em %}) has not been very satisfying.
-Evenmore, looking at avaiable data-over-sound implementations on the internet, I haven't found anything that really
+Evenmore, looking at available data-over-sound implementations on the internet, I haven't found anything that really
 works.
 
 This post provides a tool for broadcasting short messages (max 140 characters) over sound. The implementation is a
