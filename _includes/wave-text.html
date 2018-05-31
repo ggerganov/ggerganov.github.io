@@ -42,15 +42,9 @@
                     Tx protocol:
                     <select id="waveConfig" onChange="selectConfig(this.value);" title="Before broadcast/receive make sure this is set to the same value for all peers">
                         <option value=0>Normal</option>
-                        <option value=1>Fast</option>
-                        <option value=2 selected>Fastest</option>
+                        <option value=1 selected>Fast</option>
+                        <option value=2>Fastest</option>
                         <option value=3>Ultrasonic</option>
-                        <!--
-                        <option value=4>OLD Near/Quiet</option>
-                        <option value=5>OLD Far/Noisy</option>
-                        <option value=6>OLD Fast</option>
-                        <option value=7>OLD Ultrasonic</option>
-                        --!>
                     </select>
                     <label hidden id="paramFreqDelta"></label>
                     <label hidden id="paramFreqStart"></label>
