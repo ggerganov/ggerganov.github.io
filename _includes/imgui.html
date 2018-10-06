@@ -1,4 +1,21 @@
+[<i><b>Updated:</b> 6 Oct 2018</i>]
+
+<br>
+
+Choose the Github branch you want to try out:
+<select name='branch' id="branch" onchange="document.location.href =  window.location.href.split('?')[0] + '?branch=' + this.value">
+	<option value='master'>master</option>
+	<option value='docking'>docking</option>
+</select>
+
+<script type="text/javascript">
+	document.getElementById('branch').value = (location.href.indexOf("branch=") > 0 ? location.href.substr(location.href.indexOf("branch=") + ("branch=").length, 100) : "master");
+</script>
+
+<br><br>
+
 <div id="main-container">
+
     <div class="emscripten_border">
         <canvas class="emscripten" id="canvas" oncontextmenu="event.preventDefault()"></canvas>
     </div>
@@ -53,4 +70,8 @@
 </script>
 
 <base href="/scripts/">
-<script async type="text/javascript" src="imgui.js"></script>
+<script>
+    var script = document.createElement('script');
+    script.src = "imgui-" + (location.href.indexOf("branch=") > 0 ? location.href.substr(location.href.indexOf("branch=") + ("branch=").length, 100) : "master") + ".js";
+    document.body.appendChild(script);
+</script>
