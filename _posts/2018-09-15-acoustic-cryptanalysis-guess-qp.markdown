@@ -25,7 +25,7 @@ To make things easier, there are several simplifications made:
 
 <ul>
 <li>
-Around 1.0 second of audio is recorded around each key press, so make sure to press the keys slowly.
+Around 1.0 second of audio is recorded around each key press, so make sure you type slowly.
 </li>
 <li>
 Currently the program cannot calculate the moment of the key press, so it gets
