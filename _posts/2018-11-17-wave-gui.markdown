@@ -12,7 +12,7 @@ GLFW3, SDL2 and pthreads and for now it should be possible to run it only in Chr
 other browsers have the pthread related stuff disabled due to security concerns (Spectre, etc.). Hopefully this gets
 fixed in the future.
 
-The demo uses quite some CPU as it is not optimiized properly. Still, it should run smoothly on a desktop machine. In
+The demo uses quite some CPU as it is not properly optimized. Still, it should run smoothly on a desktop machine. In
 case you cannot run it in your browser for whatever reason, you can see what to expect from the demo in <a
 href="https://youtu.be/m58g1lhoQWg">this video</a>.
 
