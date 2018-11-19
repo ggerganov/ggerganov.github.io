@@ -78,9 +78,9 @@
             function loaded(evt)
             {
                 var data = new (Uint8Array)(evt.target.result);
-                var buffer = Module._malloc(data.length + 1);
-                Module.writeArrayToMemory(data, buffer, data.length + 1);
-                Module.cwrap('setFile', '', ['number', 'buffer'])(data.length, buffer);
+                Module['FS_createDataFile'](".", ".dump", data, true, true);
+                var buffer = Module._malloc(1);
+                Module.cwrap('setFile', '', ['number', 'buffer'])(1, buffer);
                 Module._free(buffer);
             }
 
