@@ -1,13 +1,14 @@
 <div id="main-container">
-
     <section>
         <div align="center">
-            <button onClick="doInit()" id="butInit" style="width:60px;height:30px;" disabled>Init</button>
+            <button onClick="doInit()" id="butInit" style="width:60px;height:30px;" disabled hidden>Init</button>
         </div>
 
+        <!--
         <br>
         <br>
         <br>
+        --!>
 
         <div id="main-controls" hidden>
             <canvas class="emscripten" id="canvas" oncontextmenu="event.preventDefault()"></canvas>
@@ -26,17 +27,51 @@
         <progress value="0" max="100" id="progressEm" hidden=1></progress>
     </div>
 
-    <a href="https://github.com/ggerganov/wave-gui">Github</a>
+    <a href="https://github.com/ggerganov/kbd-audio">Github</a>
 </div>
 
 <script type='text/javascript'>
     var isiOS = /iPad|iPhone|iPod|CriOS/.test(navigator.userAgent) && !window.MSStream;
     var isInitialized = false;
     var isAudioContextUnlocked = !isiOS;
+    var lastDownTarget;
+
+    window.onload = function() {
+        canvas = document.getElementById('canvas');
+
+        document.addEventListener('mousedown', function(event) {
+            lastDownTarget = event.target;
+        }, false);
+        document.addEventListener('keypress', function(event) {
+            if(lastDownTarget == canvas) {
+                handleKey(event);
+            }
+        }, false);
+        document.addEventListener('keydown', function(event) {
+            if(lastDownTarget == canvas) {
+                handleBackspace(event);
+            }
+        }, false);
+    }
+
+    function handleKey(event) {
+        var x = event.which || event.keyCode;
+        if (x == 13) {
+            x = 10;
+        }
+        Module.cwrap('keyPressedCallback', '', ['number'])(x);
+    }
+
+    function handleBackspace(event) {
+        var x = event.keyCode || event.charCode;
+        if( x == 8 || x == 46 ) {
+            Module.cwrap('keyPressedCallback', '', ['number'])(127);
+        }
+    }
 
     function doInit() {
         if (isInitialized == false) {
-            Module.cwrap('doInit', 'number', [''])();
+            //Module.cwrap('doInit', 'number', [''])();
             document.getElementById("butInit").disabled = true;
             isInitialized = true;
         }
@@ -51,8 +86,19 @@
 
     var Module = {
         doNotCaptureKeyboard: true,
-        preRun: [],
-        postRun: [ (function() { document.getElementById("butInit").disabled = false; }) ],
+        //arguments: ["./data/gg.kbd"],
+        preRun: [(function() {
+            let constraints = {
+                audio: {
+                    echoCancellation: false,
+                    autoGainControl: false,
+                    noiseSuppression: false
+                }
+            };
+
+            let mediaInput = navigator.mediaDevices.getUserMedia( constraints );
+        }) ],
+        postRun: [ (function() { document.getElementById("butInit").disabled = false; doInit(); }) ],
         print: (function() {
             var element = document.getElementById('output');
             if (element) element.alue = ''; // clear browser cache
@@ -71,7 +117,7 @@
         },
         canvas: (function() {
             var canvas = document.getElementById('canvas');
-            canvas.style.marginLeft = "-230px";
+            //canvas.style.marginLeft = "-230px";
             canvas.addEventListener("webglcontextlost", function(e) { alert('WebGL context lost. You will need to reload the page.'); e.preventDefault(); }, false);
 
             return canvas;
@@ -132,7 +178,6 @@
             }, 0);
         }
     }, false);
-
 </script>
-<base href="/scripts/wave-gui/">
-<script async type="text/javascript" src="wave-gui.js"></script>
+<base href="/scripts/keytap-gui/">
+<script async type="text/javascript" src="keytap-gui.js"></script>
