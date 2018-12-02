@@ -31,7 +31,7 @@ though - iMac, Filco mechanical keyboard, built-in mic.
 <li>Microphone (increase input level to max)</li>
 
 <br>
-To enable WebAssembly pthreads, check this [page](https://github.com/kripken/emscripten/wiki/Pthreads-with-WebAssembly/).
+To enable WebAssembly pthreads and SharedArrayBuffer support, check this [page](https://github.com/kripken/emscripten/wiki/Pthreads-with-WebAssembly/).
 
 [<i><b>Updated:</b> 2 Dec 2018</i>]
 [Video: a working setup](https://www.youtube.com/watch?v=2OjzI9m7W10)

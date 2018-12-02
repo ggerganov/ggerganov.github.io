@@ -36,6 +36,17 @@
     var isAudioContextUnlocked = !isiOS;
     var lastDownTarget;
 
+    function checkSharedArrayBuffer() {
+        try {
+            var a = SharedArrayBuffer;
+        } catch (e) {
+            console.log(e instanceof ReferenceError); // true
+            return false;
+        }
+
+        return true;
+    }
+
     window.onload = function() {
         canvas = document.getElementById('canvas');
 
@@ -154,7 +165,11 @@
         Module.setStatus('Exception thrown, see JavaScript console');
         spinnerElement.style.display = 'none';
         var element = document.getElementById('output');
-        element.value += event + "\n";
+        element.value += event + "\n\n";
+        if (checkSharedArrayBuffer() == false) {
+            element.value += "It seems your browser does not have SharedArrayBuffer support enabled.\n";
+            element.value += "Check the provided link in the Requirements section above for more information";
+        }
         Module.setStatus = function(text) {
             if (text) Module.printErr('[post-exception status] ' + text);
         };
