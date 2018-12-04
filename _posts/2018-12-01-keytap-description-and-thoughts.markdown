@@ -118,6 +118,9 @@ text being typed.  Effectively, it boils down to breaking a substitution cypher.
 clustering the keypress based on their CC. But I think at least I have the substitution cypher breaking part ready.
 Will try to provide more details when it actually works.
 
+[<i><b>Updated:</b> 4 Dec 2018</i>]
+For anyone interested in this problem, I posted the [Keytap Challenge](/keytap-challenge).
+
 <h2>Final words</h2>
 
 There are some publications available on this topic in the scientific literature. One particular approach I was
