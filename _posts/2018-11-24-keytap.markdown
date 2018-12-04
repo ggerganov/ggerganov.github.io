@@ -14,7 +14,7 @@ typed. This page runs a program that demonstrates such type of an attack.
 
 First, type some text in the canvas below to train the prediction model. Don't type super fast - it's recommended to try
 a *Hunt and Peck* style of typing first to at least get some positive results. The program will try to predict keys
-which have been pressed at least 2 times.
+which have been pressed at least 3 times.
 
 When ready with typing the training data, click the *Pedict* button, wait for the model to train and continue typing
 outside the browser window. The program will continuously try to guess what is being typed by only analyzing the audio
