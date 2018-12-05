@@ -72,6 +72,11 @@
                 <li>Left click + drag - move along the dataset</li>
                 <li>Space - play/stop audio playback of the current view</li>
 
+                <br>
+
+                <div align="center">
+                    <button onClick="doInit()" id="butInit" style="width:60px;height:30px;" disabled>Init</button>
+                </div>
             </div>
 
         </article>
@@ -84,12 +89,6 @@
 
         <div id="main-container">
             <section>
-                <div align="center">
-                    <button onClick="doInit()" id="butInit" style="width:60px;height:30px;" disabled>Init</button>
-                </div>
-
-                <br>
-
                 <div id="main-controls" align="center" hidden>
                     <canvas class="emscripten" id="canvas" oncontextmenu="event.preventDefault()"></canvas>
                 </div>
