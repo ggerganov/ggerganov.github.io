@@ -137,17 +137,7 @@
             var Module = {
                 doNotCaptureKeyboard: true,
                 arguments: ["./chal/record/chal.kbd"],
-                preRun: [(function() {
-                    let constraints = {
-                        audio: {
-                            echoCancellation: false,
-                            autoGainControl: false,
-                            noiseSuppression: false
-                        }
-                    };
-
-                    let mediaInput = navigator.mediaDevices.getUserMedia( constraints );
-                }) ],
+                preRun: [(function() { }) ],
                 postRun: [ (function() { document.getElementById("butInit").disabled = false; }) ],
                 print: (function() {
                     var element = document.getElementById('output');
