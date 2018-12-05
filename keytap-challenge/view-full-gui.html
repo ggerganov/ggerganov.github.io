@@ -30,27 +30,79 @@
 </head>
 
 <body>
+    <header class="site-header" role="banner">
+
+  <div class="wrapper">
+      <a class="site-title" href="/keytap-challenge/">Keytap Challenge</a>
+      <nav class="site-nav">
+        <input type="checkbox" id="nav-trigger" class="nav-trigger" />
+        <label for="nav-trigger">
+          <span class="menu-icon">
+            <svg viewBox="0 0 18 15" width="18px" height="15px">
+              <path fill="#424242" d="M18,1.484c0,0.82-0.665,1.484-1.484,1.484H1.484C0.665,2.969,0,2.304,0,1.484l0,0C0,0.665,0.665,0,1.484,0 h15.031C17.335,0,18,0.665,18,1.484L18,1.484z"/>
+              <path fill="#424242" d="M18,7.516C18,8.335,17.335,9,16.516,9H1.484C0.665,9,0,8.335,0,7.516l0,0c0-0.82,0.665-1.484,1.484-1.484 h15.031C17.335,6.031,18,6.696,18,7.516L18,7.516z"/>
+              <path fill="#424242" d="M18,13.516C18,14.335,17.335,15,16.516,15H1.484C0.665,15,0,14.335,0,13.516l0,0 c0-0.82,0.665-1.484,1.484-1.484h15.031C17.335,12.031,18,12.696,18,13.516L18,13.516z"/>
+            </svg>
+          </span>
+        </label>
+
+        <div class="trigger">
+            <a class="page-link" href="/about/">About</a>
+        </div>
+      </nav>
+  </div>
+</header>
+
+    <main class="page-content" aria-label="Content">
+    <div class="wrapper">
+        <article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
+
+            <header class="post-header">
+                <h1 class="post-title p-name" itemprop="name headline">chal.raw</h1>
+                <p class="post-meta">
+                </p>
+
+                <link rel="stylesheet" type="text/css" media="screen" href="/assets/css/style.css">
+            </header>
+
+            <div class="post-content e-content" itemprop="articleBody">
+                <p>Here you can explore the challenge dataset in your browser <em>(WebGL2 required)</em></p>
+
+                <li>Mouse scroll - zoom in and out</li>
+                <li>Left click + drag - move along the dataset</li>
+                <li>Space - play/stop audio playback of the current view</li>
+
+            </div>
+
+        </article>
+
+    </div>
+    </main>
+
     <main class="page-content-private" aria-label="Content">
     <div class="wrapper-private">
 
         <div id="main-container">
             <section>
                 <div align="center">
-                    <button onClick="doInit()" id="butInit" style="width:60px;height:30px;" disabled hidden>Init</button>
+                    <button onClick="doInit()" id="butInit" style="width:60px;height:30px;" disabled>Init</button>
                 </div>
 
-                <br>
                 <br>
 
                 <div id="main-controls" align="center" hidden>
                     <canvas class="emscripten" id="canvas" oncontextmenu="event.preventDefault()"></canvas>
                 </div>
+
+                <br>
+
             </section>
 
             <br><hr><br>
 
             <p>Standard output:</p>
             <textarea id="output" rows="100"></textarea>
+            <em>Note: WebGL2 browser support is required to run the viewer. Check if your browser is compatible <a href="http://webglreport.com/?v=2">here</a></em>
 
             <div class="spinner" id='spinnerEm'></div>
             <div class="emscripten" id="statusEm">Downloading...</div>
@@ -69,8 +121,9 @@
 
             function doInit() {
                 if (isInitialized == false) {
-                    //Module.cwrap('doInit', 'number', [''])();
+                    Module.cwrap('doInit', 'number', [''])();
                     document.getElementById("butInit").disabled = true;
+                    document.getElementById("butInit").hidden = true;
                     isInitialized = true;
                 }
 
@@ -96,7 +149,7 @@
 
                     let mediaInput = navigator.mediaDevices.getUserMedia( constraints );
                 }) ],
-                postRun: [ (function() { document.getElementById("butInit").disabled = false; doInit(); }) ],
+                postRun: [ (function() { document.getElementById("butInit").disabled = false; }) ],
                 print: (function() {
                     var element = document.getElementById('output');
                     if (element) element.alue = ''; // clear browser cache
@@ -157,6 +210,25 @@
                     if (text) Module.printErr('[post-exception status] ' + text);
                 };
             };
+
+            window.addEventListener('touchstart', function() {
+                if (isAudioContextUnlocked == false && SDL2.audioContext) {
+                    var buffer = SDL2.audioContext.createBuffer(1, 1, 22050);
+                    var source = SDL2.audioContext.createBufferSource();
+                    source.buffer = buffer;
+                    source.connect(SDL2.audioContext.destination);
+                    source.start();
+
+                    setTimeout(function() {
+                        if((source.playbackState === source.PLAYING_STATE || source.playbackState === source.FINISHED_STATE)) {
+                            isAudioContextUnlocked = true;
+                            Module.setStatus('Wab Audio API unlocked successfully!');
+                        } else {
+                            Module.setStatus('Failed to unlock Web Audio APIi. This browser seems to not be supported');
+                        }
+                    }, 0);
+                }
+            }, false);
         </script>
         <base href="/scripts/view-full-gui/">
         <script async type="text/javascript" src="view-full-gui.js"></script>
