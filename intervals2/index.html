@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <title>Interval downsampling</title>
+  <meta name="description" content="intervals-downsample2-gui">
+
+  <link rel="stylesheet" href="/assets/main.css">
+  <style>
+      #output {
+        width: 100%;
+        height: 250px;
+        margin: 0 auto;
+        margin-top: 0px;
+        border-left: 0px;
+        border-right: 0px;
+        padding-left: 0px;
+        padding-right: 0px;
+        display: block;
+        background-color: black;
+        color: white;
+        font-size: 10px;
+        font-family: 'Lucida Console', Monaco, monospace;
+        outline: none;
+      }
+  </style>
+</head>
+
+<body>
+    <p>Interval downsampling <em>(WebGL2 required)</em></p>
+    <div>
+        Use the slider below to change the number of downsampled intervals.
+        <br><br>
+        <canvas id="canvas" oncontextmenu="event.preventDefault()"></canvas>
+    </div>
+    <br>
+    <a href="https://github.com/ggerganov/intervals">Github</a>
+
+    <main class="page-content-private" aria-label="Content">
+        <div id="main-container" hidden>
+            <p>Standard output:</p>
+            <textarea id="output" rows="100"></textarea>
+            <em>Note: WebGL2 browser support is required to run the viewer. Check if your browser is compatible <a href="http://webglreport.com/?v=2">here</a></em>
+
+            <div class="spinner" id='spinnerEm'></div>
+            <div class="emscripten" id="statusEm">Downloading...</div>
+
+            <div class="emscripten">
+                <progress value="0" max="100" id="progressEm" hidden=1></progress>
+            </div>
+        </div>
+
+        <script type='text/javascript'>
+            var statusElement = document.getElementById('statusEm');
+            var progressElement = document.getElementById('progressEm');
+            var spinnerElement = document.getElementById('spinnerEm');
+
+            var Module = {
+                doNotCaptureKeyboard: true,
+                preRun: [(function() { }) ],
+                postRun: [ (function() { }) ],
+                print: (function() {
+                    var element = document.getElementById('output');
+                    if (element) element.alue = ''; // clear browser cache
+                    return function(text) {
+                        if (arguments.length > 1) text = Array.prototype.slice.call(arguments).join(' ');
+                        console.log(text);
+                        if (element) {
+                            element.value += text + "\n";
+                            element.scrollTop = element.scrollHeight; // focus on bottom
+                        }
+                    };
+                })(),
+                printErr: function(text) {
+                    if (arguments.length > 1) text = Array.prototype.slice.call(arguments).join(' ');
+                    console.error(text);
+                },
+                canvas: (function() {
+                    var canvas = document.getElementById('canvas');
+                    //canvas.style.marginLeft = "-230px";
+                    canvas.addEventListener("webglcontextlost", function(e) { alert('WebGL context lost. You will need to reload the page.'); e.preventDefault(); }, false);
+
+                    return canvas;
+                })(),
+                setStatus: function(text) {
+                    if (!Module.setStatus.last) Module.setStatus.last = { time: Date.now(), text: '' };
+                    if (text === Module.setStatus.text) return;
+                    var m = text.match(/([^(]+)\((\d+(\.\d+)?)\/(\d+)\)/);
+                    var now = Date.now();
+                    if (m && now - Date.now() < 30) return; // if this is a progress update, skip it if too soon
+                    if (m) {
+                        text = m[1];
+                        progressElement.value = parseInt(m[2])*100;
+                        progressElement.max = parseInt(m[4])*100;
+                        progressElement.hidden = false;
+                        spinnerElement.hidden = false;
+                    } else {
+                        progressElement.value = null;
+                        progressElement.max = null;
+                        progressElement.hidden = true;
+                        if (!text) spinnerElement.style.display = 'none';
+                    }
+                    statusElement.innerHTML = text;
+                },
+                totalDependencies: 0,
+                monitorRunDependencies: function(left) {
+                    this.totalDependencies = Math.max(this.totalDependencies, left);
+                    Module.setStatus(left ? 'Preparing... (' + (this.totalDependencies-left) + '/' + this.totalDependencies + ')' : 'All downloads complete.');
+                }
+            };
+
+            Module.setStatus('Initializing...');
+            window.onerror = function(event) {
+                Module.setStatus('Exception thrown, see JavaScript console');
+                spinnerElement.style.display = 'none';
+                var element = document.getElementById('output');
+                element.value += event + "\n\n";
+                Module.setStatus = function(text) {
+                    if (text) Module.printErr('[post-exception status] ' + text);
+                };
+            };
+
+        </script>
+        <base href="/scripts/intervals-downsample-gui/">
+        <script async type="text/javascript" src="intervals-downsample2-gui.js"></script>
+
+    </div>
+    </main>
+
+  </body>
+</html>
