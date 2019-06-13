@@ -226,6 +226,16 @@ var spinnerElement = document.getElementById('spinner');
 var Module = {
     doNotCaptureKeyboard: true,
     preRun: [ (function() {
+        let constraints = {
+            audio: {
+                echoCancellation: false,
+                autoGainControl: false,
+                noiseSuppression: false
+            }
+        };
+
+        let mediaInput = navigator.mediaDevices.getUserMedia( constraints );
+
         setInterval(getAverageRxTime, 100);
         setInterval(getRxData, 100);
         setInterval(getSampleRate, 1000);

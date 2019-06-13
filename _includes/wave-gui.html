@@ -51,7 +51,17 @@
 
     var Module = {
         doNotCaptureKeyboard: true,
-        preRun: [],
+        preRun: [(function() {
+            let constraints = {
+                audio: {
+                    echoCancellation: false,
+                    autoGainControl: false,
+                    noiseSuppression: false
+                }
+            };
+
+            let mediaInput = navigator.mediaDevices.getUserMedia( constraints );
+        }) ],
         postRun: [ (function() { document.getElementById("butInit").disabled = false; }) ],
         print: (function() {
             var element = document.getElementById('output');
