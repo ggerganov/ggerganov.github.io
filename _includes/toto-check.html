@@ -155,7 +155,7 @@
             // clear button
             var tr = grid.appendChild(document.createElement('tr'));
             var cell = tr.appendChild(document.createElement('td'));
-            cell.colSpan = 7;
+            cell.colSpan = 3;
             cell.innerHTML = 'Clear';
             cell.addEventListener('click', (function(){
                 return function(){
@@ -165,6 +165,32 @@
                         }
                     }
                     nums = [];
+                    check();
+                }
+            })(), false);
+
+            // random button
+            var cell = tr.appendChild(document.createElement('td'));
+            cell.colSpan = 4;
+            cell.innerHTML = 'Random';
+            cell.addEventListener('click', (function(){
+                return function(){
+                    for (var i = 0, row; row = grid.rows[i]; i++) {
+                        for (var j = 0, col; col = row.cells[j]; j++) {
+                            col.className = '';
+                        }
+                    }
+                    nums = [];
+                    while (nums.length < 6) {
+                        var r = Math.floor(Math.random() * 49);
+                        console.log(r);
+                        var cell = grid.rows[Math.floor(r/7)].cells[r%7];
+                        if (cell.className == '') {
+                            cell.className = 'checked';
+                            nums.push(r+1);
+
+                        }
+                    }
                     check();
                 }
             })(), false);
