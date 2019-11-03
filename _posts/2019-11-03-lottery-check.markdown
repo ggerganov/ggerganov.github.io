@@ -16,9 +16,4 @@ can now easily check. Enter any 6 numbers in the grid below and
 see if they were ever played. The archive contains data starting from 1958 until
 today (the data is from the [official lottery site](http://www.toto.bg/statistika/6x49)).
 
-**Note:** *this page opens a web-socket connection to a [remote server of mine](http://85.90.246.132:5003)
-in order to fetch an up-to-date lottery archive. Unfortunately, I'm too lazy
-to deal with SSL ceritificates, so currently the connection is over non-secure
-web-sockets. This triggers "content blocked" browser warnings - sorry :(*
-
 [Source code](https://github.com/ggerganov/toto-check)
