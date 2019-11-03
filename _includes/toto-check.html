@@ -1,0 +1,216 @@
+<div id="main-container">
+    <style>
+        table th, table td { padding: 0px 0px; }
+        table {
+            align:center;
+            width:210px;
+            height:210px;
+            border-collapse:collapse
+        }
+        .grid-toto td {
+            cursor:pointer;
+            width:30px;
+            height:30px;
+            border:1px solid #ccc;
+            text-align:center;
+            font-family:sans-serif;
+            font-size:13px;
+            font-weight:bold;
+            color: #ff007f;
+            border-color: #ff007f;
+        }
+        .grid-toto td.checked {
+            background: url(/assets/toto-check/xmark.gif);
+            background-size: 100% 100%;
+        }
+        #results {
+            font-size:12px;
+        }
+    </style>
+
+    <base href="/scripts/toto-check/">
+    <script src="incppect.js"></script>
+
+    <br>
+
+    <div id='grid' align='center'>
+    </div>
+
+    <br><br>
+
+    <div id='results-div'>
+        <pre id='results'>
+        </pre>
+    </div>
+
+    <script>
+        var nums = [];
+        var data = null;
+
+        var res = [
+            [], // 0
+            [], // 1
+            [], // 2
+            [], // 3
+            [], // 4
+            [], // 5
+            []  // 6
+        ];
+
+        function check() {
+            if (data === null) return;
+
+            res[0] = [];
+            res[1] = [];
+            res[2] = [];
+            res[3] = [];
+            res[4] = [];
+            res[5] = [];
+            res[6] = [];
+
+            var el = document.getElementById('results');
+
+            el.innerHTML = '';
+
+            el.innerHTML += 'Total number of issues in archive: ' + data.issues.length + '<br><br>';
+            el.innerHTML += 'Oldest entry : Year ' + data.issues[0].year + ', Issue ' + data.issues[0].idYear + '<br>';
+            el.innerHTML += 'Newest entry : Year ' + data.issues[data.issues.length - 1].year + ', Issue ' + data.issues[data.issues.length - 1].idYear + '<br>';
+            el.innerHTML += '<br>';
+
+            if (nums.length < 6) {
+                if (nums.length > 0) {
+                    el.innerHTML += 'Invalid combination: need 6 numbers';
+                }
+                for (var i = 0; i < 16; ++i) {
+                    el.innerHTML += '<br>';
+                }
+                return;
+            }
+
+            for (var i = 0; i < data.issues.length; ++i) {
+                for (var j = 0; j < data.issues[i].draws.length; ++j) {
+                    var k = 0;
+                    for (var n0 = 0; n0 < 6; ++n0) {
+                        for (var n1 = 0; n1 < 6; ++n1) {
+                            if (data.issues[i].draws[j][n0] == nums[n1]) {
+                                ++k;
+                                break;
+                            }
+                        }
+                    }
+                    var entry = {};
+                    entry.idIssue = i;
+                    entry.idDraw = j;
+
+                    res[k].push(entry);
+                }
+            }
+
+            for (var g = 6; g >= 0; --g) {
+                el.innerHTML += 'Guessed <b>' + g + '</b> out of 6 in ' + res[g].length + ' issues<br>';
+                if (g < 4) continue;
+                for (var i = res[g].length - 1; i >= 0; --i) {
+                    var idDraw = res[g][i].idDraw;
+                    var idIssue = res[g][i].idIssue;
+                    var issue = data.issues[idIssue];
+                    var draw = issue.draws[idDraw];
+
+                    el.innerHTML += '   - Year ' + issue.year + ', Issue: ' + issue.idYear.toString().padStart(3, ' ') + ', Draw: '
+                    for (var k = 0; k < 6; ++k) {
+                        el.innerHTML += draw[k].toString().padStart(3, ' ');
+                    }
+                    el.innerHTML += '<br>';
+                }
+            }
+        }
+
+        function gridToto649(){
+            var i = 0;
+            var grid = document.createElement('table');
+            grid.className = 'grid-toto';
+            for (var r = 0; r < 7; ++r){
+                var tr = grid.appendChild(document.createElement('tr'));
+                for (var c = 0; c < 7; ++c){
+                    var cell = tr.appendChild(document.createElement('td'));
+                    cell.innerHTML = ++i;
+                    cell.addEventListener('click', (function(el, i){
+                        return function(){
+                            if (el.className == '') {
+                                if (nums.length == 6) return;
+                                el.className='checked';
+                                nums.push(i)
+                                nums.sort();
+                            } else {
+                                el.className='';
+                                nums = nums.filter(function(item) {
+                                    return item !== i;
+                                });
+                            }
+                            check();
+                        }
+                    })(cell, i), false);
+                }
+            }
+
+            // clear button
+            var tr = grid.appendChild(document.createElement('tr'));
+            var cell = tr.appendChild(document.createElement('td'));
+            cell.colSpan = 7;
+            cell.innerHTML = 'Clear';
+            cell.addEventListener('click', (function(){
+                return function(){
+                    for (var i = 0, row; row = grid.rows[i]; i++) {
+                        for (var j = 0, col; col = row.cells[j]; j++) {
+                            col.className = '';
+                        }
+                    }
+                    nums = [];
+                    check();
+                }
+            })(), false);
+
+            return grid;
+        }
+
+        function init() {
+            document.getElementById('grid').appendChild(gridToto649());
+
+            console.log('Loading data...');
+
+            incppect.render = function() {
+                if (data === null) {
+                    var str = this.get_str('jsonIssues');
+                    if (str) {
+                        var obj = JSON.parse(str);
+                        if (obj != null) {
+                            data = obj;
+                        }
+                    }
+                } else {
+                    console.log('Loaded a total of ' + data.issues.length + ' issues of toto 6/49');
+                    check();
+
+                    // we have the archive data - close the ws connection
+                    this.ws.close();
+                }
+            }
+
+            incppect.onerror = function(evt) {
+                console.error(evt);
+            }
+
+            // disable incppect auto reconnects
+            incppect.k_auto_reconnect = false;
+            incppect.k_requests_update_freq_ms = 1000;
+
+            // fetch lottery archive from the following url
+            incppect.ws_uri = 'ws://85.90.246.132:5003/incppect';
+
+            // initialize incppect client
+            incppect.init();
+        }
+
+        init();
+
+    </script>
+</div>
