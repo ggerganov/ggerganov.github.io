@@ -39,7 +39,7 @@
     <br><br>
 
     <div id='results-div'>
-        <pre id='results'>
+        <pre id='results'>Initializing ...
         </pre>
     </div>
 
@@ -204,6 +204,10 @@
             console.log('Loading data...');
 
             incppect.render = function() {
+                var el = document.getElementById('results');
+
+                el.innerHTML = 'Fetching lottery archive ...';
+
                 if (data === null) {
                     var str = this.get_str('jsonIssues');
                     if (str) {

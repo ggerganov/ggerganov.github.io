@@ -2,6 +2,7 @@
 layout: post
 title:  "Could I have won the lottery?"
 date:   2019-11-03 10:00:00 +0200
+permalink: lottery-check
 htmlarr:
 - toto-check.html
 categories: jekyll update
