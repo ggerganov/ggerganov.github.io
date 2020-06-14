@@ -70,19 +70,18 @@
         if (x == 13) {
             x = 10;
         }
-        Module.cwrap('keyPressedCallback', '', ['number'])(x);
+        Module._keyPressedCallback(x);
     }
 
     function handleBackspace(event) {
         var x = event.keyCode || event.charCode;
         if( x == 8 || x == 46 ) {
-            Module.cwrap('keyPressedCallback', '', ['number'])(127);
+            Module._keyPressedCallback(127);
         }
     }
 
     function doInit() {
         if (isInitialized == false) {
-            //Module.cwrap('doInit', 'number', [''])();
             document.getElementById("butInit").disabled = true;
             isInitialized = true;
         }
@@ -101,6 +100,8 @@
         preRun: [(function() {
             let constraints = {
                 audio: {
+                    sampleRate: 16000,
+                    channelCount: 1,
                     echoCancellation: false,
                     autoGainControl: false,
                     noiseSuppression: false

@@ -120,7 +120,7 @@
 
             function doInit() {
                 if (isInitialized == false) {
-                    Module.cwrap('doInit', 'number', [''])();
+                    Module._doInit();
                     document.getElementById("butInit").disabled = true;
                     document.getElementById("butInit").hidden = true;
                     isInitialized = true;
