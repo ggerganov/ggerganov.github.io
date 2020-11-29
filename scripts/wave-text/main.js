@@ -11,32 +11,29 @@ function transmitText(sText) {
 
     var buffer = Module._malloc(256);
     Module.writeArrayToMemory(r, buffer, 256);
-    Module.cwrap('setText', 'number', ['number', 'buffer'])(sText.length, buffer);
+    Module._setText(sText.length, buffer);
     Module._free(buffer);
 }
 
 var firstTimeFail = false;
 var peerInfo = document.querySelector('a#peer-info');
-var peerReceive = document.querySelector('a#peer-receive');
 
 function updatePeerInfo() {
     if (typeof Module === 'undefined') return;
-    var framesLeftToRecord = Module.cwrap('getFramesLeftToRecord', 'number', [])();
-    var framesToRecord = Module.cwrap('getFramesToRecord', 'number', [])();
-    var framesLeftToAnalyze = Module.cwrap('getFramesLeftToAnalyze', 'number', [])();
-    var framesToAnalyze = Module.cwrap('getFramesToAnalyze', 'number', [])();
+    var framesLeftToRecord = Module._getFramesLeftToRecord();
+    var framesToRecord = Module._getFramesToRecord();
+    var framesLeftToAnalyze = Module._getFramesLeftToAnalyze();
+    var framesToAnalyze = Module._getFramesToAnalyze();
 
     if (framesToAnalyze > 0) {
         peerInfo.innerHTML=
             "Analyzing Rx data: <progress value=" + (framesToAnalyze - framesLeftToAnalyze) +
             " max=" + (framesToRecord) + "></progress>";
-        peerReceive.innerHTML= "";
     } else if (framesLeftToRecord > Math.max(0, 0.05*framesToRecord)) {
         firstTimeFail = true;
         peerInfo.innerHTML=
             "Transmission in progress: <progress value=" + (framesToRecord - framesLeftToRecord) +
             " max=" + (framesToRecord) + "></progress>";
-        peerReceive.innerHTML= "";
     } else if (framesToRecord > 0) {
         peerInfo.innerHTML= "Analyzing Rx data ...";
     } else if (framesToRecord == 0) {
@@ -52,7 +49,7 @@ function updatePeerInfo() {
 
 function updateRx() {
     if (typeof Module === 'undefined') return;
-    Module.cwrap('getText', 'number', ['buffer'])(bufferRx);
+    Module._getText(bufferRx);
     var result = "";
     for (var i = 0; i < 140; ++i){
         result += (String.fromCharCode((Module.HEAPU8)[bufferRx + i]));

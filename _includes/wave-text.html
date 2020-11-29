@@ -38,7 +38,7 @@
         </table>
         <table id="main-controls" hidden>
             <tr>
-                <td colspan=2>
+                <td colspan=1>
                     Tx protocol:
                     <select id="waveConfig" onChange="selectConfig(this.value);" title="Before broadcast/receive make sure this is set to the same value for all peers">
                         <option value=0>Normal</option>
@@ -52,17 +52,16 @@
                     <label hidden id="paramBytesPerTx"></label>
                 </td>
                 <td colspan=1>
+                    Volume:
                     <input type="range" min="1" max="100" value="10" class="slider" id="paramVolume" onInput="updateScroll('Volume');">
                                         / <label id="paramVolumeScroll"></label></td>
                 </td>
             </tr>
-            <tr><td colspan=3></td></tr>
+            <tr><td colspan=2></td></tr>
             <tr>
                 <td colspan=1>
                     <div>Rx data:</div> <textarea name="textarea" id="rxData" style="width:300px;height:100px;" disabled>
                     </textarea>
-                </td>
-                <td colspan=1>
                 </td>
                 <td colspan=1>
                     <div>Tx Data:</div> <textarea name="textarea" id="txData" style="width:300px;height:100px;">This is the message to transmit.</textarea><br>
@@ -72,9 +71,6 @@
             <tr>
                 <td colspan=1>
                     <a id="peer-info"></a>
-                </td>
-                <td colspan=1>
-                    <a id="peer-receive"></a>
                 </td>
                 <td colspan=1>
                     <button onClick="lockoutSubmit(this); transmitText(document.getElementById('txData').value);">Broadcast</button>
@@ -171,8 +167,8 @@
             paramBytesPerTx.value = 3;
         }
 
-        Module.cwrap('setTxMode','',['number'])(1); // Variable length mode
-        Module.cwrap('setParameters','',['number','number','number','number','number','number','number'])(
+        Module._setTxMode(1); // Variable length mode
+        Module._setParameters(
             paramFreqDelta.value,
             paramFreqStart.value,
             paramFramesPerTx.value,
@@ -185,7 +181,7 @@
         val = document.getElementById('param'+sName).value;
         document.getElementById('param'+sName+'Scroll').innerHTML = val;
 
-        Module.cwrap('setParameters','',['number','number','number','number','number','number','number'])(
+        Module._setParameters(
             paramFreqDelta.value,
             paramFreqStart.value,
             paramFramesPerTx.value,
@@ -196,7 +192,7 @@
 
     function getSampleRate() {
         if (typeof Module === 'undefined') return;
-        var sampleRate = Module.cwrap('getSampleRate', 'number', [''])();
+        var sampleRate = Module._getSampleRate();
     }
 
     var isiOS = /iPad|iPhone|iPod|CriOS/.test(navigator.userAgent) && !window.MSStream;
@@ -208,7 +204,7 @@
     var htmlYellowLED = "<div class=\"led-yellow\"></div>";
 
 	function checkStatus() {
-		var hasDeviceOutput = Module.cwrap('hasDeviceOutput', 'number', [''])();
+		var hasDeviceOutput = Module._hasDeviceOutput();
         {
             var el = document.getElementById('has-device-output');
             if (hasDeviceOutput != 0 && isAudioContextUnlocked) {
@@ -222,7 +218,7 @@
             }
         }
 
-		var hasDeviceCapture = Module.cwrap('hasDeviceCapture', 'number', [''])();
+		var hasDeviceCapture = Module._hasDeviceCapture();
         {
             var el = document.getElementById('has-device-capture');
             if (hasDeviceCapture != 0) {
@@ -315,7 +311,7 @@
 
     function doInit() {
         if (isInitialized == false) {
-            Module.cwrap('doInit', 'number', [''])();
+            Module._doInit();
 
             e = document.getElementById('waveConfig');
             selectConfig(e.options[e.selectedIndex].value);
@@ -370,5 +366,5 @@
 
 </script>
 <base href="/scripts/wave-text/">
-<script async type="text/javascript" src="wave.js"></script>
+<script async type="text/javascript" src="ggwave-wasm.js"></script>
 <script type="text/javascript" src="main.js"></script>
