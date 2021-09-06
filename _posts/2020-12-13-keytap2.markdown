@@ -1,0 +1,8 @@
+---
+layout: post
+title:  "Keytap2: acoustic keyboard eavesdropping based on language n-gram frequencies"
+date:   2020-12-13 00:00:00 +0200
+permalink: keytap2
+redirect_to: https://github.com/ggerganov/kbd-audio/discussions/31
+categories: jekyll update
+---

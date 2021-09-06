@@ -1,0 +1,8 @@
+---
+layout: post
+title:  "r2t2: transmit data with the PC speaker"
+date:   2021-04-19 12:00:00 +0200
+permalink: r2t2
+redirect_to: https://github.com/ggerganov/ggwave/tree/master/examples/r2t2
+categories: jekyll update
+---
