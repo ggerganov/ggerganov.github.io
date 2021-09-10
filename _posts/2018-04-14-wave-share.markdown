@@ -15,4 +15,3 @@ microphone capture on this page. Watch a tutorial
 
 <i><b>Updated:</b> 29 Nov 2020</i><br>
 For basic text transmission through sound, please checkout my [blog post about data-over-sound]({% post_url 2018-05-28-data-over-sound-2 %}).
-Make sure to select the "Text" radio button and adjust the Tx/Rx protocol.
