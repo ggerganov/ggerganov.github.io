@@ -3,38 +3,6 @@ layout: post
 title:  "Keytap: acoustic keyboard eavesdropping"
 date:   2018-11-24 13:00:00 +0200
 permalink: keytap
-htmlarr:
-- keytap-gui.html
+redirect_to: https://keytap.ggerganov.com
 categories: jekyll update
 ---
-
-<h1>Description</h1>
-
-The sound emitted by keystrokes can potentially be used to perform a side channel attack for guessing the text being
-typed. This page runs a program that demonstrates such type of an attack.
-
-First, type some text in the canvas below to train the prediction model. Don't type super fast - it's recommended to try
-a *Hunt and Peck* style of typing first to at least get some positive results. The program will try to predict keys
-which have been pressed at least 3 times.
-
-When ready with typing the training data, click the *Pedict* button, wait for the model to train and continue typing
-outside the browser window. The program will continuously try to guess what is being typed by only analyzing the audio
-capture from the page.
-
-Currently, the code is not very portable, so please read the requirements below and make sure you meet them.  Also, this
-is a proof-of-concept and probably won't work effectively in all environments.  It does work pretty good on my setup
-though - iMac, Filco mechanical keyboard, built-in mic.
-
-<h1>Requirements</h1>
-
-<li>Non-mobile browser supporting pthreads with WebAssembly (i.e. Chrome or Firefox Nightly)</li>
-<li>Mechanical keyboard</li>
-<li>Microphone (increase input level to max)</li>
-
-<br>
-To enable WebAssembly pthreads and SharedArrayBuffer support, check this [page](https://github.com/kripken/emscripten/wiki/Pthreads-with-WebAssembly/).
-
-[<i><b>Updated:</b> 2 Dec 2018</i>]
-[Video: a working setup](https://www.youtube.com/watch?v=2OjzI9m7W10)
-
-<h1>Demo</h1>
