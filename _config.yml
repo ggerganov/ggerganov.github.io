@@ -7,7 +7,7 @@ github_username: ggerganov
 
 # Build settings
 markdown: kramdown
-theme: jekyll-theme-hacker
+theme: jekyll-theme-minimal
 plugins:
   - jekyll-feed
   - jekyll-redirect-from
