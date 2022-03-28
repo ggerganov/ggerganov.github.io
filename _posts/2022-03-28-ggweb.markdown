@@ -1,0 +1,8 @@
+---
+layout: post
+title:  "GGWeb: C++ GUI apps for the web"
+date:   2022-03-28 18:30:00 +0200
+permalink: ggweb
+redirect_to: https://github.com/ggerganov/ggweb#readme
+categories: jekyll update
+---
