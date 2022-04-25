@@ -1,0 +1,8 @@
+---
+layout: post
+title:  "Keytap3: check if your keyboard can be eavesdropped through a microphone"
+date:   2022-04-25 12:00:00 +0200
+permalink: keytap3
+redirect_to: https://keytap3.ggerganov.com
+categories: jekyll update
+---
